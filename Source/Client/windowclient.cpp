@@ -80,7 +80,7 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
       exit(1);
     }
     printf("Client %d) Envoi requête, attente réponse...\n", getpid());
-
+	
     // Exemples à supprimer
     setPublicite("Promotions sur les concombres !!!");
     setArticle("pommes",5.53,18,"pommes.jpg");
@@ -322,33 +322,25 @@ void WindowClient::closeEvent(QCloseEvent *event)
   // Envoi d'une requete DECONNECT au serveur
   MESSAGE m;
 
-  if (logged == false) 
+  /* Si on est déja logé, il faut d'abord envoyer une requete de LOGOUT
+   * Ici on simule l'appuie sur le bouton LOGOUT qui va envoyer la requete pour nous
+   */
+  
+  if (logged == true) 
   {
-      printf("Client %d) Envoi d'une requête de deconnexion...\n", getpid());
-      m.expediteur = getpid();
-      m.requete = DECONNECT;
-      m.type = 1;
-      if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
-      {
-        perror("(Client) Erreur de msgsend");
-        exit(1);
-      }
-      
-  }
-  else
-  {
-    printf("Client %d) Envoi d'une requête de deconnexion...\n", getpid());
-      m.expediteur = getpid();
-      m.requete = LOGOUT;
-      m.type = 1;
-      if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
-      {
-        perror("(Client) Erreur de msgsend");
-        exit(1);
-      }
+	  on_pushButtonLogout_clicked();    
   }
 
-
+  printf("Client %d) Envoi d'une requête de deconnexion...\n", getpid());
+  m.expediteur = getpid();
+  m.requete = DECONNECT;
+  m.type = 1;
+  if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+  {
+	  perror("(Client) Erreur de msgsend");
+	  exit(1);
+  }
+  
   // Envoi d'une requete de deconnexion au serveur
 
   exit(0);
@@ -399,7 +391,7 @@ void WindowClient::on_pushButtonLogout_clicked()
     // Envoi d'une requete de logout au serveur
     // TO DO
     
-
+	
     printf("Client %d) Envoi d'une requête de logout...\n", getpid());
     m.expediteur = getpid();
     m.requete = LOGOUT;
@@ -409,6 +401,9 @@ void WindowClient::on_pushButtonLogout_clicked()
       perror("(Client) Erreur de msgsend");
       exit(1);
     }
+
+	logged = false;
+	logoutOK();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
