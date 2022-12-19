@@ -90,6 +90,7 @@ int main()
 
     MESSAGE m;
     MESSAGE reponse;
+    int logging_ok = 0;
 
     while (1)
     {
@@ -153,6 +154,7 @@ int main()
                     fprintf(stderr, "(SERVEUR %d) Nouveau client \"%s\" crée !\n", getpid(), m.data2);
 					m.data1 = 1;
 					strcpy(m.data4, "Nouveau client crée avec succès. Vous êtes coonecté !");
+                    logging_ok = 1;
                 }
             }
 
@@ -168,24 +170,7 @@ int main()
 					/* Si c'est le cas, on verifie le mot de passe */
 
                     if (verifieMotDePasse(status, m.data3)) {
-
-						i = 0;
-						while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
-							i++;
-						if (tab->connexions[i].pidFenetre == m.expediteur) {
-							strcpy(tab->connexions[i].nom, m.data2);
-							fprintf(stderr, "(SERVEUR %d) Client \"%s\" logé !\n", getpid(), m.data2);
-							m.data1 = 1;
-							strcpy(m.data4, "Re-bonjour !");
-						}
-
-						/* Cas très rare mais on pourrait imaginer que une erreur interne ce soit passée */
-						else {
-							fprintf(stderr, "(SERVEUR %d) Impossible d'associer l'utilisateur au tableau de connexions !\n", getpid());
-							m.data1 = 0;
-							strcpy(m.data4, "Une erreur interne au serveur est survenue !");
-						}
-						
+                        logging_ok = 1;
 					}
 					else {
 						fprintf(stderr, "(SERVEUR %d) Client \"%s\" à entré un mot de passe incorrect !\n", getpid(), m.data2);
@@ -193,6 +178,54 @@ int main()
 						strcpy(m.data4, "Le mot de passe entré est incorrect !");
 					}
 				}
+            }
+
+            if (logging_ok) {
+                
+                i = 0;
+                while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                    i++;
+                if (tab->connexions[i].pidFenetre == m.expediteur) {
+                    strcpy(tab->connexions[i].nom, m.data2);
+                    /* Creation du caddie associer au client */
+                    fprintf(stderr, "(SERVEUR %d) Création du caddie pour le client #%d \"%s\" logé !\n", getpid(),m.expediteur, m.data2);
+                    int idCaddie;
+
+                    idCaddie = fork();
+                    if (idCaddie == 0) {
+                        if (execlp("./Caddie", "Caddie", NULL) == -1) {
+                        perror("Impossible de créer le processus Caddie !\n");
+                        exit(1);
+                        }
+                    }
+                    i = 0;
+
+                    while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                        i++;
+                    if (tab->connexions[i].pidFenetre == m.expediteur) {
+                        tab->connexions[i].pidCaddie = idCaddie;
+                        fprintf(stderr, "(SERVEUR %d) Caddie #%d ajouté au client #%d \"%s\" !\n", getpid(),idCaddie, m.expediteur, m.data2);
+                    }
+                    else {
+                        fprintf(stderr, "(SERVEUR %d) Impossible d'associer un caddie au client #%d \"%s\" !\n", getpid(), m.expediteur, m.data2);
+                        m.data1 = 0;
+                        strcpy(m.data4, "Une erreur interne au serveur est survenue !");
+                    }
+
+                    fprintf(stderr, "(SERVEUR %d) Client \"%s\" logé !\n", getpid(), m.data2);
+                    m.data1 = 1;
+                    // TODO: Add username to welcome message 
+                    strcpy(m.data4, "Re-bonjour !");
+                    
+                }
+
+                /* Cas très rare mais on pourrait imaginer que une erreur interne ce soit passée */
+                else {
+                    fprintf(stderr, "(SERVEUR %d) Impossible d'associer l'utilisateur au tableau de connexions !\n", getpid());
+                    m.data1 = 0;
+                    strcpy(m.data4, "Une erreur interne au serveur est survenue !");
+                }
+
             }
 
 			/* Envois de la reponse au client pour savoir si il est connecté ou pas */
@@ -208,6 +241,7 @@ int main()
 			/* Avertir le client que une reponse à été envoyer par un SIGUSR1 */
 			
             kill(m.type, SIGUSR1);
+            logging_ok = 0;
             break;
 
         case LOGOUT: // TO DO
@@ -221,7 +255,9 @@ int main()
 			if (tab->connexions[i].pidFenetre == m.expediteur) {
 				if (*tab->connexions[i].nom != '\0') {
 					*tab->connexions[i].nom = '\0';
-					fprintf(stderr, "(SERVEUR %d) Le client associé au PID #%d est déconnecté !\n", getpid(), tab->connexions[i].pidFenetre);
+					fprintf(stderr, "(SERVEUR %d) Le client #%d est déconnecté !\n", getpid(), tab->connexions[i].pidFenetre);
+                    fprintf(stderr, "(SERVEUR %d) Le caddie #%d associé au client #%d est supprimé !\n", getpid(),tab->connexions[i].pidCaddie, tab->connexions[i].pidFenetre);
+                    tab->connexions[i].pidCaddie = 0;
 				}
 				else {
 					fprintf(stderr, "(SERVEUR %d) Requete LOGOUT venant du client #%d ignorée, l'utilisateur n'étais pas connecté au préalable !\n", getpid(), tab->connexions[i].pidFenetre);
