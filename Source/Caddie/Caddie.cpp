@@ -43,15 +43,14 @@ int main(int argc,char* argv[])
     perror("(CADDIE) Erreur de msgget");
     exit(1);
   }
-
-  // Connexion à la base de donnée
+  
+    // Connexion à la base de donnée
   connexion = mysql_init(NULL);
   if (mysql_real_connect(connexion,"localhost","Student","PassStudent1_","PourStudent",0,0,0) == NULL)
   {
     fprintf(stderr,"(SERVEUR) Erreur de connexion à la base de données...\n");
     exit(1);  
   }
-
 
   MESSAGE m;
   MESSAGE reponse;
@@ -62,16 +61,16 @@ int main(int argc,char* argv[])
   MYSQL_ROW  Tuple;
 
   // Récupération descripteur écriture du pipe
-  fdWpipe = atoi(argv[1]);
+  //fdWpipe = atoi(argv[1]);//HOUSTON WE HAVE A PROBLEM
 
   while(1)
   {
-    if (msgrcv(idQ,&m,sizeof(MESSAGE)-sizeof(long),getpid(),0) == -1)
+    if (msgrcv(idQ,&m,sizeof(MESSAGE)-sizeof(long),getpid(), 0) == -1)
     {
       perror("(CADDIE) Erreur de msgrcv");
       exit(1);
     }
-
+    
     switch(m.requete)
     {
       case LOGIN :    // TO DO
@@ -80,6 +79,8 @@ int main(int argc,char* argv[])
 
       case LOGOUT :   // TO DO
                       fprintf(stderr,"(CADDIE %d) Requete LOGOUT reçue de %d\n",getpid(),m.expediteur);
+                      mysql_close(connexion);
+                      exit(0);
                       break;
 
       case CONSULT :  // TO DO

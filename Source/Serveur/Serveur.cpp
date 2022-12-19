@@ -12,6 +12,8 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <setjmp.h>
+
 #include "protocole.h" // contient la cle et la structure d'un message
 #include "FichierClient.h"
 
@@ -19,9 +21,11 @@ int idQ, idShm, idSem;
 int fdPipe[2];
 TAB_CONNEXIONS *tab;
 
-void afficheTab();
-void SIGINTHANDLER(int signum);
+sigjmp_buf contexte;
 
+void afficheTab();
+void SIGINTHANDLER (int signum);
+void SIGCHLDHANDLER (int signum);
 int main()
 {
     // Armement des signaux
@@ -33,6 +37,15 @@ int main()
 	sig.sa_handler = SIGINTHANDLER;
 	if (sigaction(SIGINT, &sig, NULL) == -1)
     {
+        perror("Erreur de sigaction : ");
+        exit(1);
+    }
+
+    struct sigaction sig_chld;
+    sig_chld.sa_flags = 0;
+    sigemptyset(&sig_chld.sa_mask);
+    sig_chld.sa_handler = SIGCHLDHANDLER;
+    if (sigaction(SIGCHLD, &sig_chld, NULL) == -1) {
         perror("Erreur de sigaction : ");
         exit(1);
     }
@@ -75,10 +88,9 @@ int main()
     afficheTab();
 
     // Creation du processus Publicite (étape 2)
-    int idPub;
 
-    idPub = fork();
-    if (idPub == 0) {
+    tab->pidPublicite = fork();
+    if (tab->pidPublicite == 0) {
         if (execlp("./Publicite", "Publicite", NULL) == -1) {
             perror("Impossible de créer le processus publicite !\n");
             exit(1);
@@ -91,7 +103,8 @@ int main()
     MESSAGE m;
     MESSAGE reponse;
     int logging_ok = 0;
-
+    sigsetjmp(contexte, 1);
+    
     while (1)
     {
         fprintf(stderr, "(SERVEUR %d) Attente d'une requete...\n", getpid());
@@ -256,8 +269,14 @@ int main()
 				if (*tab->connexions[i].nom != '\0') {
 					*tab->connexions[i].nom = '\0';
 					fprintf(stderr, "(SERVEUR %d) Le client #%d est déconnecté !\n", getpid(), tab->connexions[i].pidFenetre);
-                    fprintf(stderr, "(SERVEUR %d) Le caddie #%d associé au client #%d est supprimé !\n", getpid(),tab->connexions[i].pidCaddie, tab->connexions[i].pidFenetre);
-                    tab->connexions[i].pidCaddie = 0;
+                    fprintf(stderr, "(SERVEUR %d) Envoie d'une requete LOGOUT au caddie #%d\n", getpid(), tab->connexions[i].pidCaddie);
+                    m.expediteur = 1;
+                    m.type = tab->connexions[i].pidCaddie;
+                    
+                    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                    {
+                        fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la requete au caddie #%ld", getpid(), m.type);
+                    }
 				}
 				else {
 					fprintf(stderr, "(SERVEUR %d) Requete LOGOUT venant du client #%d ignorée, l'utilisateur n'étais pas connecté au préalable !\n", getpid(), tab->connexions[i].pidFenetre);
@@ -326,7 +345,7 @@ void afficheTab()
 
 void SIGINTHANDLER(int signum)
 {
-	fprintf(stderr, "(SERVEUR %d) Reçus du signal \"SIGINT\". Nettoyer de la file...\n", getpid());
+	fprintf(stderr, "(SERVEUR %d) Reçus du signal \"SIGINT\". Nettoyage de la file...\n", getpid());
 
     if (msgctl(idQ, IPC_RMID, NULL) == -1) {
 		fprintf(stderr, "(SERVEUR %d) Impossible de supprimer la file de messages !\n", getpid());
@@ -339,4 +358,25 @@ void SIGINTHANDLER(int signum)
 	fprintf(stderr, "(SERVEUR %d) Mémoire partagée supprimée !\n", getpid());
 	exit(0);
 
+}
+void SIGCHLDHANDLER (int signum)
+{
+    int i;
+    int id;
+    int status;
+
+    fprintf(stderr, "(SERVEUR %d) Reçus du signal \"SIGCHLD\". Nettoyage de la table de processus..\n", getpid());
+    id = wait(&status);
+    if (WIFEXITED(status))
+        fprintf(stderr, "(SERVEUR %d) Le fils %d s'est terminé par un exit (%d)\n", getpid(), id, WEXITSTATUS(status));
+    
+    i = 0;
+    while (i < 6 && tab->connexions[i].pidCaddie != id)
+		i++;
+
+	if (tab->connexions[i].pidCaddie == id){
+        fprintf(stderr, "(SERVEUR %d) Le caddie #%d associé au client #%d est supprimé !\n", getpid(),id, tab->connexions[i].pidFenetre);
+        tab->connexions[i].pidCaddie = 0;
+    }
+    siglongjmp(contexte, 1);
 }

@@ -97,7 +97,7 @@ int main()
 
     while (1)
     {
-        printf("Client %d) Envoi d'une requête d'update pub...\n", getpid());
+        printf("(PUBLICITE %d) Envoi d'une requête d'update pub...\n", getpid());
         m.expediteur = getpid();
         m.requete = UPDATE_PUB;
         m.type = 1;
