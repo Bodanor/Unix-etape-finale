@@ -19,6 +19,24 @@ void handlerSIGUSR1(int sig);
 void handlerSIGUSR2(int sig);
 int fd;
 
+void rotation_gauche(char *source);
+
+void rotation_gauche(char *source)
+{
+    int i;
+    char tmp;
+    
+    i = 0;
+    
+    tmp = source[0];
+    while (i < 51) {
+        source[i] = source[i+ 1];
+        i++;
+    }
+    source[50] = tmp;
+    source[51] = '\0';
+    
+}
 int main()
 {
     // Armement des signaux
@@ -29,11 +47,6 @@ int main()
     sigemptyset(&User1.sa_mask);
     User1.sa_handler = handlerSIGUSR1;
 
-    struct sigaction User2;
-
-    User2.sa_flags = 0;
-    sigemptyset(&User2.sa_mask);
-    User2.sa_handler = handlerSIGUSR1;
 
     if (sigaction(SIGUSR1, &User1, NULL) == -1)
     {
@@ -41,11 +54,7 @@ int main()
         exit(1);
     }
 
-    if (sigaction(SIGUSR2, &User2, NULL) == -1)
-    {
-        perror("Erreur de sigaction : ");
-        exit(1);
-    }
+    
 
     // Masquage des signaux
     sigset_t mask;
@@ -64,11 +73,13 @@ int main()
     // Recuperation de l'identifiant de la mémoire partagée
 
     // Attachement à la mémoire partagée
-    pShm = (char *)malloc(52); // a supprimer et remplacer par ce qu'il faut
-    int taille = strlen(pShm);
-    if (idShm = shmget(idQ, taille, IPC_CREAT | IPC_EXCL | 0600))
+    if ((idShm = shmget(idQ, 0, 0)) == -1)
     {
         perror("Erreur de shmget");
+        exit(1);
+    }
+    if ((pShm = (char*)shmat(idShm, NULL, 0)) == (void*)-1) {
+        perror("Impossible de s'attacher à la mémoire partagée !\n");
         exit(1);
     }
     // Mise en place de la publicité en mémoire partagée
@@ -82,13 +93,24 @@ int main()
     for (int i = 0; i < strlen(pub); i++)
         pShm[indDebut + i] = pub[i];
 
+    MESSAGE m;
+
     while (1)
     {
-        // Envoi d'une requete UPDATE_PUB au serveur
-
+        printf("Client %d) Envoi d'une requête d'update pub...\n", getpid());
+        m.expediteur = getpid();
+        m.requete = UPDATE_PUB;
+        m.type = 1;
+        if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0) == -1)
+        {
+	        perror("(Client) Erreur de msgsend");
+	        exit(1);
+        }
+    
         sleep(1);
-
+        rotation_gauche(pShm);
         // Decallage vers la gauche
+        
     }
 }
 
@@ -96,11 +118,9 @@ void handlerSIGUSR1(int sig)
 {
     fprintf(stderr, "(PUBLICITE %d) Nouvelle publicite !\n", getpid());
 
+    /* TODO*/
     // Lecture message NEW_PUB
 
     // Mise en place de la publicité en mémoire partagée
 }
 
-void handlerSIGUSR2(int sig)
-{
-}

@@ -17,7 +17,7 @@ extern WindowClient *w;
 
 int idQ, idShm;
 bool logged;
-char* pShm;
+char *pShm;
 ARTICLE articleEnCours;
 float totalCaddie = 0.0;
 
@@ -34,7 +34,9 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
     ui->tableWidgetPanier->setColumnCount(3);
     ui->tableWidgetPanier->setRowCount(0);
     QStringList labelsTablePanier;
-    labelsTablePanier << "Article" << "Prix à l'unité" << "Quantité";
+    labelsTablePanier << "Article"
+                      << "Prix à l'unité"
+                      << "Quantité";
     ui->tableWidgetPanier->setHorizontalHeaderLabels(labelsTablePanier);
     ui->tableWidgetPanier->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableWidgetPanier->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -45,20 +47,25 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
     ui->tableWidgetPanier->horizontalHeader()->setStyleSheet("background-color: lightyellow");
 
     // Recuperation de l'identifiant de la file de messages
-    fprintf(stderr,"(CLIENT %d) Recuperation de l'id de la file de messages\n",getpid());
-    
-    if ((idQ = msgget(CLE, 0)) == -1) {
+    fprintf(stderr, "(CLIENT %d) Recuperation de l'id de la file de messages\n", getpid());
+
+    if ((idQ = msgget(CLE, 0)) == -1)
+    {
         fprintf(stderr, "Erreur de recuperatoin de la cle\n");
-      exit(1);
+        exit(1);
     }
     fprintf(stderr, "(CLIENT %d) Id de la file : %d\n", getpid(), idQ);
-    
+
     // Recuperation de l'identifiant de la mémoire partagée
-    fprintf(stderr,"(CLIENT %d) Recuperation de l'id de la mémoire partagée\n",getpid());
+    fprintf(stderr, "(CLIENT %d) Recuperation de l'id de la mémoire partagée\n", getpid());
     // TO DO
 
     // Attachement à la mémoire partagée
-    // TO DO
+    if ((idShm = shmget(idQ, 0, 0)) == -1)
+    {
+        perror("Erreur de shmget");
+        exit(1);
+    }
 
     // Armement des signaux
     struct sigaction sigusr1;
@@ -67,6 +74,18 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
     sigemptyset(&sigusr1.sa_mask);
     sigaction(SIGUSR1, &sigusr1, NULL);
 
+    struct sigaction User2;
+
+    User2.sa_flags = 0;
+    sigemptyset(&User2.sa_mask);
+    User2.sa_handler = handlerSIGUSR2;
+
+    if (sigaction(SIGUSR2, &User2, NULL) == -1)
+    {
+        perror("Erreur de siguser2 : ");
+        exit(1);
+    }
+
     // Envoi d'une requete de connexion au serveur
     // TO DO
     MESSAGE m;
@@ -74,17 +93,17 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
     m.requete = CONNECT;
     m.type = 1;
 
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
     printf("Client %d) Envoi requête, attente réponse...\n", getpid());
-	
+
     // Exemples à supprimer
     setPublicite("Promotions sur les concombres !!!");
-    setArticle("pommes",5.53,18,"pommes.jpg");
-    ajouteArticleTablePanier("cerises",8.96,2);
+    setArticle("pommes", 5.53, 18, "pommes.jpg");
+    ajouteArticleTablePanier("cerises", 8.96, 2);
 }
 
 WindowClient::~WindowClient()
@@ -95,192 +114,196 @@ WindowClient::~WindowClient()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///// Fonctions utiles : ne pas modifier /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::setNom(const char* Text)
+void WindowClient::setNom(const char *Text)
 {
-  if (strlen(Text) == 0 )
-  {
-    ui->lineEditNom->clear();
-    return;
-  }
-  ui->lineEditNom->setText(Text);
+    if (strlen(Text) == 0)
+    {
+        ui->lineEditNom->clear();
+        return;
+    }
+    ui->lineEditNom->setText(Text);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-const char* WindowClient::getNom()
+const char *WindowClient::getNom()
 {
-  strcpy(nom,ui->lineEditNom->text().toStdString().c_str());
-  return nom;
+    strcpy(nom, ui->lineEditNom->text().toStdString().c_str());
+    return nom;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::setMotDePasse(const char* Text)
+void WindowClient::setMotDePasse(const char *Text)
 {
-  if (strlen(Text) == 0 )
-  {
-    ui->lineEditMotDePasse->clear();
-    return;
-  }
-  ui->lineEditMotDePasse->setText(Text);
+    if (strlen(Text) == 0)
+    {
+        ui->lineEditMotDePasse->clear();
+        return;
+    }
+    ui->lineEditMotDePasse->setText(Text);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-const char* WindowClient::getMotDePasse()
+const char *WindowClient::getMotDePasse()
 {
-  strcpy(motDePasse,ui->lineEditMotDePasse->text().toStdString().c_str());
-  return motDePasse;
+    strcpy(motDePasse, ui->lineEditMotDePasse->text().toStdString().c_str());
+    return motDePasse;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::setPublicite(const char* Text)
+void WindowClient::setPublicite(const char *Text)
 {
-  if (strlen(Text) == 0 )
-  {
-    ui->lineEditPublicite->clear();
-    return;
-  }
-  ui->lineEditPublicite->setText(Text);
+    if (strlen(Text) == 0)
+    {
+        ui->lineEditPublicite->clear();
+        return;
+    }
+    ui->lineEditPublicite->setText(Text);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::setImage(const char* image)
+void WindowClient::setImage(const char *image)
 {
-  // Met à jour l'image
-  char cheminComplet[80];
-  sprintf(cheminComplet,"%s%s",REPERTOIRE_IMAGES,image);
-  QLabel* label = new QLabel();
-  label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-  label->setScaledContents(true);
-  QPixmap *pixmap_img = new QPixmap(cheminComplet);
-  label->setPixmap(*pixmap_img);
-  label->resize(label->pixmap()->size());
-  ui->scrollArea->setWidget(label);
+    // Met à jour l'image
+    char cheminComplet[80];
+    sprintf(cheminComplet, "%s%s", REPERTOIRE_IMAGES, image);
+    QLabel *label = new QLabel();
+    label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    label->setScaledContents(true);
+    QPixmap *pixmap_img = new QPixmap(cheminComplet);
+    label->setPixmap(*pixmap_img);
+    label->resize(label->pixmap()->size());
+    ui->scrollArea->setWidget(label);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int WindowClient::isNouveauClientChecked()
 {
-  if (ui->checkBoxNouveauClient->isChecked()) return 1;
-  return 0;
+    if (ui->checkBoxNouveauClient->isChecked())
+        return 1;
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::setArticle(const char* intitule,float prix,int stock,const char* image)
+void WindowClient::setArticle(const char *intitule, float prix, int stock, const char *image)
 {
-  ui->lineEditArticle->setText(intitule);
-  if (prix >= 0.0)
-  {
-    char Prix[20];
-    sprintf(Prix,"%.2f",prix);
-    ui->lineEditPrixUnitaire->setText(Prix);
-  }
-  else ui->lineEditPrixUnitaire->clear();
-  if (stock >= 0)
-  {
-    char Stock[20];
-    sprintf(Stock,"%d",stock);
-    ui->lineEditStock->setText(Stock);
-  }
-  else ui->lineEditStock->clear();
-  setImage(image);
+    ui->lineEditArticle->setText(intitule);
+    if (prix >= 0.0)
+    {
+        char Prix[20];
+        sprintf(Prix, "%.2f", prix);
+        ui->lineEditPrixUnitaire->setText(Prix);
+    }
+    else
+        ui->lineEditPrixUnitaire->clear();
+    if (stock >= 0)
+    {
+        char Stock[20];
+        sprintf(Stock, "%d", stock);
+        ui->lineEditStock->setText(Stock);
+    }
+    else
+        ui->lineEditStock->clear();
+    setImage(image);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int WindowClient::getQuantite()
 {
-  return ui->spinBoxQuantite->value();
+    return ui->spinBoxQuantite->value();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WindowClient::setTotal(float total)
 {
-  if (total >= 0.0)
-  {
-    char Total[20];
-    sprintf(Total,"%.2f",total);
-    ui->lineEditTotal->setText(Total);
-  }
-  else ui->lineEditTotal->clear();
+    if (total >= 0.0)
+    {
+        char Total[20];
+        sprintf(Total, "%.2f", total);
+        ui->lineEditTotal->setText(Total);
+    }
+    else
+        ui->lineEditTotal->clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WindowClient::loginOK()
 {
-  ui->pushButtonLogin->setEnabled(false);
-  ui->pushButtonLogout->setEnabled(true);
-  ui->lineEditNom->setReadOnly(true);
-  ui->lineEditMotDePasse->setReadOnly(true);
-  ui->checkBoxNouveauClient->setEnabled(false);
+    ui->pushButtonLogin->setEnabled(false);
+    ui->pushButtonLogout->setEnabled(true);
+    ui->lineEditNom->setReadOnly(true);
+    ui->lineEditMotDePasse->setReadOnly(true);
+    ui->checkBoxNouveauClient->setEnabled(false);
 
-  ui->spinBoxQuantite->setEnabled(true);
-  ui->pushButtonPrecedent->setEnabled(true);
-  ui->pushButtonSuivant->setEnabled(true);
-  ui->pushButtonAcheter->setEnabled(true);
-  ui->pushButtonSupprimer->setEnabled(true);
-  ui->pushButtonViderPanier->setEnabled(true);
-  ui->pushButtonPayer->setEnabled(true);
+    ui->spinBoxQuantite->setEnabled(true);
+    ui->pushButtonPrecedent->setEnabled(true);
+    ui->pushButtonSuivant->setEnabled(true);
+    ui->pushButtonAcheter->setEnabled(true);
+    ui->pushButtonSupprimer->setEnabled(true);
+    ui->pushButtonViderPanier->setEnabled(true);
+    ui->pushButtonPayer->setEnabled(true);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WindowClient::logoutOK()
 {
-  ui->pushButtonLogin->setEnabled(true);
-  ui->pushButtonLogout->setEnabled(false);
-  ui->lineEditNom->setReadOnly(false);
-  ui->lineEditMotDePasse->setReadOnly(false);
-  ui->checkBoxNouveauClient->setEnabled(true);
+    ui->pushButtonLogin->setEnabled(true);
+    ui->pushButtonLogout->setEnabled(false);
+    ui->lineEditNom->setReadOnly(false);
+    ui->lineEditMotDePasse->setReadOnly(false);
+    ui->checkBoxNouveauClient->setEnabled(true);
 
-  ui->spinBoxQuantite->setEnabled(false);
-  ui->pushButtonPrecedent->setEnabled(false);
-  ui->pushButtonSuivant->setEnabled(false);
-  ui->pushButtonAcheter->setEnabled(false);
-  ui->pushButtonSupprimer->setEnabled(false);
-  ui->pushButtonViderPanier->setEnabled(false);
-  ui->pushButtonPayer->setEnabled(false);
+    ui->spinBoxQuantite->setEnabled(false);
+    ui->pushButtonPrecedent->setEnabled(false);
+    ui->pushButtonSuivant->setEnabled(false);
+    ui->pushButtonAcheter->setEnabled(false);
+    ui->pushButtonSupprimer->setEnabled(false);
+    ui->pushButtonViderPanier->setEnabled(false);
+    ui->pushButtonPayer->setEnabled(false);
 
-  setNom("");
-  setMotDePasse("");
-  ui->checkBoxNouveauClient->setCheckState(Qt::CheckState::Unchecked);
+    setNom("");
+    setMotDePasse("");
+    ui->checkBoxNouveauClient->setCheckState(Qt::CheckState::Unchecked);
 
-  setArticle("",-1.0,-1,"");
+    setArticle("", -1.0, -1, "");
 
-  w->videTablePanier();
-  totalCaddie = 0.0;
-  w->setTotal(-1.0);
+    w->videTablePanier();
+    totalCaddie = 0.0;
+    w->setTotal(-1.0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///// Fonctions utiles Table du panier (ne pas modifier) /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::ajouteArticleTablePanier(const char* article,float prix,int quantite)
+void WindowClient::ajouteArticleTablePanier(const char *article, float prix, int quantite)
 {
-    char Prix[20],Quantite[20];
+    char Prix[20], Quantite[20];
 
-    sprintf(Prix,"%.2f",prix);
-    sprintf(Quantite,"%d",quantite);
+    sprintf(Prix, "%.2f", prix);
+    sprintf(Quantite, "%d", quantite);
 
     // Ajout possible
     int nbLignes = ui->tableWidgetPanier->rowCount();
     nbLignes++;
     ui->tableWidgetPanier->setRowCount(nbLignes);
-    ui->tableWidgetPanier->setRowHeight(nbLignes-1,10);
+    ui->tableWidgetPanier->setRowHeight(nbLignes - 1, 10);
 
     QTableWidgetItem *item = new QTableWidgetItem;
-    item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     item->setTextAlignment(Qt::AlignCenter);
     item->setText(article);
-    ui->tableWidgetPanier->setItem(nbLignes-1,0,item);
+    ui->tableWidgetPanier->setItem(nbLignes - 1, 0, item);
 
     item = new QTableWidgetItem;
-    item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     item->setTextAlignment(Qt::AlignCenter);
     item->setText(Prix);
-    ui->tableWidgetPanier->setItem(nbLignes-1,1,item);
+    ui->tableWidgetPanier->setItem(nbLignes - 1, 1, item);
 
     item = new QTableWidgetItem;
-    item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
+    item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     item->setTextAlignment(Qt::AlignCenter);
     item->setText(Quantite);
-    ui->tableWidgetPanier->setItem(nbLignes-1,2,item);
+    ui->tableWidgetPanier->setItem(nbLignes - 1, 2, item);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -293,7 +316,8 @@ void WindowClient::videTablePanier()
 int WindowClient::getIndiceArticleSelectionne()
 {
     QModelIndexList liste = ui->tableWidgetPanier->selectionModel()->selectedRows();
-    if (liste.size() == 0) return -1;
+    if (liste.size() == 0)
+        return -1;
     QModelIndex index = liste.at(0);
     int indice = index.row();
     return indice;
@@ -302,15 +326,15 @@ int WindowClient::getIndiceArticleSelectionne()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///// Fonctions permettant d'afficher des boites de dialogue (ne pas modifier ////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::dialogueMessage(const char* titre,const char* message)
+void WindowClient::dialogueMessage(const char *titre, const char *message)
 {
-   QMessageBox::information(this,titre,message);
+    QMessageBox::information(this, titre, message);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WindowClient::dialogueErreur(const char* titre,const char* message)
+void WindowClient::dialogueErreur(const char *titre, const char *message)
 {
-   QMessageBox::critical(this,titre,message);
+    QMessageBox::critical(this, titre, message);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -318,32 +342,32 @@ void WindowClient::dialogueErreur(const char* titre,const char* message)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WindowClient::closeEvent(QCloseEvent *event)
 {
-  // TO DO (étape 1)
-  // Envoi d'une requete DECONNECT au serveur
-  MESSAGE m;
+    // TO DO (étape 1)
+    // Envoi d'une requete DECONNECT au serveur
+    MESSAGE m;
 
-  /* Si on est déja logé, il faut d'abord envoyer une requete de LOGOUT
-   * Ici on simule l'appuie sur le bouton LOGOUT qui va envoyer la requete pour nous
-   */
-  
-  if (logged == true) 
-  {
-	  on_pushButtonLogout_clicked();    
-  }
+    /* Si on est déja logé, il faut d'abord envoyer une requete de LOGOUT
+     * Ici on simule l'appuie sur le bouton LOGOUT qui va envoyer la requete pour nous
+     */
 
-  printf("Client %d) Envoi d'une requête de deconnexion...\n", getpid());
-  m.expediteur = getpid();
-  m.requete = DECONNECT;
-  m.type = 1;
-  if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
-  {
-	  perror("(Client) Erreur de msgsend");
-	  exit(1);
-  }
-  
-  // Envoi d'une requete de deconnexion au serveur
+    if (logged == true)
+    {
+        on_pushButtonLogout_clicked();
+    }
 
-  exit(0);
+    printf("Client %d) Envoi d'une requête de deconnexion...\n", getpid());
+    m.expediteur = getpid();
+    m.requete = DECONNECT;
+    m.type = 1;
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    {
+        perror("(Client) Erreur de msgsend");
+        exit(1);
+    }
+
+    // Envoi d'une requete de deconnexion au serveur
+
+    exit(0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -354,21 +378,20 @@ void WindowClient::on_pushButtonLogin_clicked()
     // Envoi d'une requete de login au serveur
     // TO DO
 
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de login...\n", getpid());
     m.expediteur = getpid();
     m.requete = LOGIN;
     m.type = 1;
-    m.data1 = isNouveauClientChecked() ? 1: 0;
+    m.data1 = isNouveauClientChecked() ? 1 : 0;
     strcpy(m.data2, getNom());
     strcpy(m.data3, getMotDePasse());
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -376,34 +399,33 @@ void WindowClient::on_pushButtonLogout_clicked()
 {
     // Envoi d'une requete CANCEL_ALL au serveur (au cas où le panier n'est pas vide)
     // TO DO
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de cancel_all...\n", getpid());
     m.expediteur = getpid();
     m.requete = CANCEL_ALL;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 
     // Envoi d'une requete de logout au serveur
     // TO DO
-    
-	
+
     printf("Client %d) Envoi d'une requête de logout...\n", getpid());
     m.expediteur = getpid();
     m.requete = LOGOUT;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 
-	logged = false;
-	logoutOK();
+    logged = false;
+    logoutOK();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -411,16 +433,16 @@ void WindowClient::on_pushButtonSuivant_clicked()
 {
     // TO DO (étape 3)
     // Envoi d'une requete CONSULT au serveur
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de consult...\n", getpid());
     m.expediteur = getpid();
     m.requete = CONSULT;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 }
 
@@ -429,16 +451,16 @@ void WindowClient::on_pushButtonPrecedent_clicked()
 {
     // TO DO (étape 3)
     // Envoi d'une requete CONSULT au serveur
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de consult...\n", getpid());
     m.expediteur = getpid();
     m.requete = CONSULT;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 }
 
@@ -447,16 +469,16 @@ void WindowClient::on_pushButtonAcheter_clicked()
 {
     // TO DO (étape 5)
     // Envoi d'une requete ACHAT au serveur
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de achat...\n", getpid());
     m.expediteur = getpid();
     m.requete = ACHAT;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 }
 
@@ -465,16 +487,16 @@ void WindowClient::on_pushButtonSupprimer_clicked()
 {
     // TO DO (étape 6)
     // Envoi d'une requete CANCEL au serveur
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de cancel...\n", getpid());
     m.expediteur = getpid();
     m.requete = CANCEL;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 
     // Mise à jour du caddie
@@ -483,16 +505,15 @@ void WindowClient::on_pushButtonSupprimer_clicked()
     w->setTotal(-1.0);
 
     // Envoi requete CADDIE au serveur
-  
 
     printf("Client %d) Envoi d'une requête de caddie...\n", getpid());
     m.expediteur = getpid();
     m.requete = CADDIE;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 }
 
@@ -501,16 +522,16 @@ void WindowClient::on_pushButtonViderPanier_clicked()
 {
     // TO DO (étape 6)
     // Envoi d'une requete CANCEL_ALL au serveur
-    MESSAGE m; 
+    MESSAGE m;
 
     printf("Client %d) Envoi d'une requête de cancel_all...\n", getpid());
     m.expediteur = getpid();
     m.requete = CANCEL_ALL;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 
     // Mise à jour du caddie
@@ -519,18 +540,16 @@ void WindowClient::on_pushButtonViderPanier_clicked()
     w->setTotal(-1.0);
 
     // Envoi requete CADDIE au serveur
-  
 
     printf("Client %d) Envoi d'une requête de caddie...\n", getpid());
     m.expediteur = getpid();
     m.requete = CADDIE;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -544,14 +563,14 @@ void WindowClient::on_pushButtonPayer_clicked()
     m.expediteur = getpid();
     m.requete = PAYER;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
     char tmp[100];
-    sprintf(tmp,"Merci pour votre paiement de %.2f ! Votre commande sera livrée tout prochainement.",totalCaddie);
-    dialogueMessage("Payer...",tmp);
+    sprintf(tmp, "Merci pour votre paiement de %.2f ! Votre commande sera livrée tout prochainement.", totalCaddie);
+    dialogueMessage("Payer...", tmp);
 
     // Mise à jour du caddie
     w->videTablePanier();
@@ -563,10 +582,10 @@ void WindowClient::on_pushButtonPayer_clicked()
     m.expediteur = getpid();
     m.requete = CADDIE;
     m.type = 1;
-    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
-      perror("(Client) Erreur de msgsend");
-      exit(1);
+        perror("(Client) Erreur de msgsend");
+        exit(1);
     }
 }
 
@@ -576,41 +595,52 @@ void WindowClient::on_pushButtonPayer_clicked()
 void handlerSIGUSR1(int sig)
 {
     MESSAGE m;
-    if (msgrcv(idQ,&m,sizeof(MESSAGE)-sizeof(long),getpid(),0) != -1)  // !!! a modifier en temps voulu !!!
+    if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) != -1) // !!! a modifier en temps voulu !!!
     {
-      switch(m.requete)
-      {
-        case LOGIN :
-                    if (m.data1 == 1) {
-                        w->dialogueMessage("Login", m.data4);
-                        logged = true;
-                        w->loginOK();
-                    }
-                    else {
-                      w->dialogueErreur("Erreur", m.data4);
-                      }
-                    
-                    break;
+        switch (m.requete)
+        {
+        case LOGIN:
+            if (m.data1 == 1)
+            {
+                w->dialogueMessage("Login", m.data4);
+                logged = true;
+                w->loginOK();
+            }
+            else
+            {
+                w->dialogueErreur("Erreur", m.data4);
+            }
 
-        case CONSULT : // TO DO (étape 3)
-                    break;
+            break;
 
-        case ACHAT : // TO DO (étape 5)
-                    break;
+        case CONSULT: // TO DO (étape 3)
+            break;
 
-         case CADDIE : // TO DO (étape 5)
-                    break;
+        case ACHAT: // TO DO (étape 5)
+            break;
 
-         case TIME_OUT : // TO DO (étape 6)
-                    break;
+        case CADDIE: // TO DO (étape 5)
+            break;
 
-         case BUSY : // TO DO (étape 7)
-                    break;
+        case TIME_OUT: // TO DO (étape 6)
+            break;
 
-         default :
-                    break;
-      }
+        case BUSY: // TO DO (étape 7)
+            break;
+
+        default:
+            break;
+        }
     }
 }
 
+void handlerSIGUSR2(int sig)
+{
+
+    if ((pShm = (char*)shmat(idShm, NULL, 0)) == (void*)-1) {
+        perror("Impossible de s'attacher à la mémoire partagée !\n");
+        exit(1);
+    }
+    w->setPublicite(pShm);
+}
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////

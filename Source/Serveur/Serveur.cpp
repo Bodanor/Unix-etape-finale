@@ -31,7 +31,11 @@ int main()
 	sig.sa_flags = 0;
 	sigemptyset(&sig.sa_mask);
 	sig.sa_handler = SIGINTHANDLER;
-	sigaction(SIGINT, &sig, NULL);
+	if (sigaction(SIGINT, &sig, NULL) == -1)
+    {
+        perror("Erreur de sigaction : ");
+        exit(1);
+    }
 
     // Creation des ressources
     // Creation de la file de message
@@ -39,6 +43,15 @@ int main()
     if ((idQ = msgget(CLE, IPC_CREAT | IPC_EXCL | 0600)) == -1) // CLE definie dans protocole.h
     {
         perror("(SERVEUR) Erreur de msgget");
+        exit(1);
+    }
+
+    // Creation de la memoire partagée
+    fprintf(stderr, "(SERVEUR %d) Creation de la memoire partagée\n", getpid());
+    int taille = 52;
+    if (idShm = shmget(idQ, taille, IPC_CREAT | IPC_EXCL | 0600) == -1)
+    {
+        perror("Erreur de shmget");
         exit(1);
     }
 
@@ -62,7 +75,15 @@ int main()
     afficheTab();
 
     // Creation du processus Publicite (étape 2)
-    // TO DO
+    int idPub;
+
+    idPub = fork();
+    if (idPub == 0) {
+        if (execlp("./Publicite", "Publicite", NULL) == -1) {
+            perror("Impossible de créer le processus publicite !\n");
+            exit(1);
+        }
+    }
 
     // Creation du processus AccesBD (étape 4)
     // TO DO
@@ -213,6 +234,14 @@ int main()
             break;
 
         case UPDATE_PUB: // TO DO
+            fprintf(stderr, "(SERVEUR %d) Requete UPDATE_PUB reçue de %d\n", getpid(), m.expediteur);
+
+            for (unsigned int i = 0; i < 6; i++) {
+                if (tab->connexions[i].pidFenetre != 0) {
+                    fprintf(stderr, "(SERVEUR %d) Envoie du signal SIGUSR2(Update PUB) au client #%d\n", getpid(), m.expediteur);
+                    kill(tab->connexions[i].pidFenetre, SIGUSR2);
+                }
+            }
             break;
 
         case CONSULT: // TO DO
@@ -266,8 +295,12 @@ void SIGINTHANDLER(int signum)
     if (msgctl(idQ, IPC_RMID, NULL) == -1) {
 		fprintf(stderr, "(SERVEUR %d) Impossible de supprimer la file de messages !\n", getpid());
 	}
+    fprintf(stderr, "(SERVEUR %d) File de messages supprimée !\n", getpid());
 
-	fprintf(stderr, "(SERVEUR %d) File de messages supprimée !\n", getpid());
+    if (shmctl(idShm, IPC_RMID, NULL) == -1) {
+        fprintf(stderr, "(SERVEUR %d) Impossible de supprimer la memoire partagée !\n", getpid());
+    }
+	fprintf(stderr, "(SERVEUR %d) Mémoire partagée supprimée !\n", getpid());
 	exit(0);
 
 }
