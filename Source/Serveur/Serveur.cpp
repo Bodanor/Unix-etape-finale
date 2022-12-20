@@ -102,8 +102,10 @@ int main()
 
     MESSAGE m;
     MESSAGE reponse;
+    int idCaddie;
     int logging_ok = 0;
     sigsetjmp(contexte, 1);
+    
     
     while (1)
     {
@@ -202,7 +204,7 @@ int main()
                     strcpy(tab->connexions[i].nom, m.data2);
                     /* Creation du caddie associer au client */
                     fprintf(stderr, "(SERVEUR %d) Création du caddie pour le client #%d \"%s\" logé !\n", getpid(),m.expediteur, m.data2);
-                    int idCaddie;
+                    
 
                     idCaddie = fork();
                     if (idCaddie == 0) {
@@ -301,6 +303,29 @@ int main()
 
         case CONSULT: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete CONSULT reçue de %d\n", getpid(), m.expediteur);
+            
+            //reponse destinataire = PID du caddie
+            i = 0;
+
+            /* Cherche le cadie correspondant au client */
+            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                i++;
+            
+            if (tab->connexions[i].pidFenetre == m.expediteur) {
+                idCaddie = tab->connexions[i].pidCaddie;
+            }
+            
+            reponse.type = idCaddie; //pas sur mais il faut associer le id du processus au bon client apres je ne sais pas si c'est juste ce j'ai fait
+            reponse.expediteur = tab->connexions[i].pidFenetre;
+            reponse.data1 = m.data1;
+            reponse.requete = CONSULT;
+            if(msgsnd(idQ, &reponse, sizeof(reponse) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsnd");
+                exit(1);
+            }
+            
+
             break;
 
         case ACHAT: // TO DO

@@ -15,7 +15,7 @@ Publicite: Source/Publicite/Publicite.cpp
 	$(CC) $< -o $@ -I Include/
 
 Caddie: Source/Caddie/Caddie.cpp
-	$(CC) $< $(CFLAGSSQL) -o $@ -I Include/
+	$(CC) -g $< $(CFLAGSSQL) -o $@ -I Include/
 
 AccesBD: Source/AccesBD/AccesBD.cpp
 	$(CC) $< $(CFLAGSSQL) -o $@ -I Include/

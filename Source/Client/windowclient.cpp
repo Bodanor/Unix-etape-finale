@@ -379,6 +379,7 @@ void WindowClient::on_pushButtonLogin_clicked()
     // TO DO
 
     MESSAGE m;
+   
 
     printf("Client %d) Envoi d'une requête de login...\n", getpid());
     m.expediteur = getpid();
@@ -392,6 +393,9 @@ void WindowClient::on_pushButtonLogin_clicked()
         perror("(Client) Erreur de msgsend");
         exit(1);
     }
+
+ 
+    
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -400,6 +404,7 @@ void WindowClient::on_pushButtonLogout_clicked()
     // Envoi d'une requete CANCEL_ALL au serveur (au cas où le panier n'est pas vide)
     // TO DO
     MESSAGE m;
+    
 
     printf("Client %d) Envoi d'une requête de cancel_all...\n", getpid());
     m.expediteur = getpid();
@@ -437,8 +442,14 @@ void WindowClient::on_pushButtonSuivant_clicked()
 
     printf("Client %d) Envoi d'une requête de consult...\n", getpid());
     m.expediteur = getpid();
-    m.requete = CONSULT;
     m.type = 1;
+    m.requete = CONSULT;
+    m.data1 = 21; // Fix pour que ca reste sur tomates
+    if(articleEnCours.id<21) {
+        articleEnCours.id++;
+        m.data1 = articleEnCours.id;
+    }
+    printf("Article en cours = %d", articleEnCours.id);
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
@@ -455,8 +466,15 @@ void WindowClient::on_pushButtonPrecedent_clicked()
 
     printf("Client %d) Envoi d'une requête de consult...\n", getpid());
     m.expediteur = getpid();
-    m.requete = CONSULT;
     m.type = 1;
+    m.requete = CONSULT;
+    m.data1 = 1;
+    if (articleEnCours.id > 1)
+    {
+        articleEnCours.id--;
+        m.data1 = articleEnCours.id;
+    }
+    printf("Article en cours = %d", articleEnCours.id);
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
@@ -595,6 +613,8 @@ void WindowClient::on_pushButtonPayer_clicked()
 void handlerSIGUSR1(int sig)
 {
     MESSAGE m;
+    int tmp;
+
     if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) != -1) // !!! a modifier en temps voulu !!!
     {
         switch (m.requete)
@@ -605,6 +625,19 @@ void handlerSIGUSR1(int sig)
                 w->dialogueMessage("Login", m.data4);
                 logged = true;
                 w->loginOK();
+
+                printf("Client %d) Envoi d'une requête de consult...\n", getpid());
+                m.expediteur = getpid();
+                m.requete = CONSULT;
+                m.type = 1;
+                articleEnCours.id = 1;
+                m.data1 = articleEnCours.id;
+                if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                {
+                    perror("Erreur de msgsnd");
+                    exit(1);
+                }
+                    
             }
             else
             {
@@ -614,6 +647,9 @@ void handlerSIGUSR1(int sig)
             break;
 
         case CONSULT: // TO DO (étape 3)
+            printf("Client %d) Requete CONSULT reçue de Caddie ...\n", getpid());
+            tmp = atoi(m.data3);
+            w->setArticle(m.data2, m.data5, tmp, m.data4);
             break;
 
         case ACHAT: // TO DO (étape 5)
