@@ -483,7 +483,7 @@ void WindowClient::on_pushButtonPrecedent_clicked()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WindowClient::on_pushButtonAcheter_clicked()
 {
-    /*
+    
     // TO DO (étape 5)
     // Envoi d'une requete ACHAT au serveur
     MESSAGE m;
@@ -493,13 +493,13 @@ void WindowClient::on_pushButtonAcheter_clicked()
     m.requete = ACHAT;
     m.type = 1;
     m.data1 = articleEnCours.id;
-    m.data2 = getQuantite();//PQ ????????????????????????????????????????????????????????????????
+    sprintf(m.data2, "%s", getQuantite());
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
         exit(1);
     }
-    */
+    
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -650,8 +650,10 @@ void handlerSIGUSR1(int sig)
 
         case CONSULT: // TO DO (étape 3)
             printf("Client %d) Requete CONSULT reçue de Caddie ...\n", getpid());
-            tmp = atoi(m.data3);
-            w->setArticle(m.data2, m.data5, tmp, m.data4);
+            if (m.data1 != -1) {
+                tmp = atoi(m.data3);
+                w->setArticle(m.data2, m.data5, tmp, m.data4);
+            }
             break;
 
         case ACHAT: // TO DO (étape 5)
