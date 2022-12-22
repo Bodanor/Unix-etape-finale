@@ -449,7 +449,6 @@ void WindowClient::on_pushButtonSuivant_clicked()
         articleEnCours.id++;
         m.data1 = articleEnCours.id;
     }
-    printf("Article en cours = %d", articleEnCours.id);
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
@@ -474,7 +473,6 @@ void WindowClient::on_pushButtonPrecedent_clicked()
         articleEnCours.id--;
         m.data1 = articleEnCours.id;
     }
-    printf("Article en cours = %d", articleEnCours.id);
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
@@ -488,11 +486,14 @@ void WindowClient::on_pushButtonAcheter_clicked()
     // TO DO (étape 5)
     // Envoi d'une requete ACHAT au serveur
     MESSAGE m;
+    //int quantite = getQuantite();
 
     printf("Client %d) Envoi d'une requête de achat...\n", getpid());
     m.expediteur = getpid();
     m.requete = ACHAT;
     m.type = 1;
+    //m.data1 = articleEnCours.id;
+    //m.data2 = quantite;
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");

@@ -45,25 +45,17 @@ int main(int argc, char *argv[])
     }
 
     // Connexion à la base de donnée
-    connexion = mysql_init(NULL);
-    if (mysql_real_connect(connexion, "localhost", "Student", "PassStudent1_", "PourStudent", 0, 0, 0) == NULL)
-    {
-        fprintf(stderr, "(SERVEUR) Erreur de connexion à la base de données...\n");
-        exit(1);
-    }
-
+    
     MESSAGE m;
     MESSAGE reponse;
 
     char requete[200];
     char newUser[20];
-    MYSQL_RES *resultat;
-    MYSQL_ROW ligne;
+    int ret;
 
     // Récupération descripteur écriture du pipe
-    // fdWpipe = atoi(argv[1]);//HOUSTON WE HAVE A PROBLEM
+     fdWpipe = atoi(argv[1]); //HOUSTON WE HAVE A PROBLEM
 
-    int nbChamps;
     while (1)
     {
         if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
@@ -76,6 +68,8 @@ int main(int argc, char *argv[])
         {
         case LOGIN: // TO DO
             fprintf(stderr, "(CADDIE %d) Requete LOGIN reçue de %d\n", getpid(), m.expediteur);
+            pidClient = m.expediteur;
+            
             break;
 
         case LOGOUT: // TO DO
@@ -85,41 +79,33 @@ int main(int argc, char *argv[])
             break;
 
         case CONSULT: // TO DO
+            printf("ID Article == %d\n", m.data1);
             fprintf(stderr, "(CADDIE %d) Requete CONSULT reçue de %d\n", getpid(), m.expediteur);
-            sprintf(requete, "select * from UNIX_FINAL WHERE id = %d", m.data1);
-            if (mysql_query(connexion, requete) == 0)
-            {
 
-                if ((resultat = mysql_store_result(connexion)) == NULL)
-                {
-                    fprintf(stderr, "(CADDIE %d) Impossible d'obtenir le résultat !\n", getpid());
-                }
-                else
-                {
-                    nbChamps = mysql_num_fields(resultat);
-                    if ((ligne = mysql_fetch_row(resultat)) != NULL)
-                    {
-                        strcpy(m.data2, ligne[1]);
-                        strcpy(m.data3, ligne[3]);
-                        strcpy(m.data4, ligne[4]);
-                        m.data5 = atof(ligne[2]);
-                    }
-                    else
-                        fprintf(stderr, "(CADDIE %d) Une erreur interne à la requete est survenue !\n", getpid());
-                }
-            }
-            else
-            {
-                fprintf(stderr, "(CADDIE %d) Impossible d'envoyer la requete !\n", getpid());
-            }
-            m.type = m.expediteur;
-            m.requete = CONSULT;
-            if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
-            {
-                fprintf(stderr, "Erreur de msgsend");
+            m.expediteur = getpid(); // CONNARD C A CAUSE DE TOI QU ON A GALERER FDP
+            if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
+                fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
+                printf("%d != %d\n", (int)strlen(requete) + 1, ret);
                 exit(1);
             }
-            kill(m.expediteur, SIGUSR1);
+            // Message recv de AccesBD
+
+            if(msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
+            {
+                fprintf(stderr, "CADDIE (apres le pipe) Erreur de msgrcv : ");
+                exit(1);
+            }
+            m.type = pidClient;
+            m.requete = CONSULT;
+            m.expediteur = getpid();
+            if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
+                exit(1);
+            }
+            printf("\n\nm.expiditeur : %d\n m.type = %ld\n m.requete = %d\n\n", m.expediteur, m.type, m.requete);
+            kill(pidClient, SIGUSR1);
+            
             break;
 
         case ACHAT: // TO DO

@@ -38,5 +38,6 @@ Client:	$(CPP_OBJECTS_CLIENTS)
 	$(CC) $(CFLAGS_COMMON) $(CFLAGSSQL) -o $@ $<
 
 clean:
+	ipcrm -a
 	rm -rf Publicite Caddie AccesBD Serveur CreationBD Client Gerant
 	find . -name "*.o" -type f -delete

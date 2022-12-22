@@ -72,6 +72,14 @@ int main()
 
     // Creation du pipe
     // TO DO
+    int fd[2];
+
+    if(pipe(fd) == -1)
+    {
+        perror("Erreur de pipe");
+        exit(1);
+    }
+    
 
     // Initialisation du tableau de connexions
     tab = (TAB_CONNEXIONS *)malloc(sizeof(TAB_CONNEXIONS));
@@ -100,12 +108,22 @@ int main()
     // Creation du processus AccesBD (étape 4)
     // TO DO
 
+    tab->pidAccesBD = fork();
+    if (tab->pidAccesBD == 0) {
+        char tmp[10];
+        sprintf(tmp, "%d", fd[0]);
+        if (execlp("./AccesBD", "AccesBD", tmp, NULL) == -1) {
+            perror("Impossible de créer le processus AccesBD !\n");
+            exit(1);
+        }
+    }
+
     MESSAGE m;
     MESSAGE reponse;
     int idCaddie;
     int logging_ok = 0;
     sigsetjmp(contexte, 1);
-    
+    char temp[10];
     
     while (1)
     {
@@ -207,8 +225,9 @@ int main()
                     
 
                     idCaddie = fork();
+                    sprintf(temp, "%d", fd[1]);
                     if (idCaddie == 0) {
-                        if (execlp("./Caddie", "Caddie", NULL) == -1) {
+                        if (execlp("./Caddie", "Caddie", temp, NULL) == -1) {
                         perror("Impossible de créer le processus Caddie !\n");
                         exit(1);
                         }
@@ -220,6 +239,11 @@ int main()
                     if (tab->connexions[i].pidFenetre == m.expediteur) {
                         tab->connexions[i].pidCaddie = idCaddie;
                         fprintf(stderr, "(SERVEUR %d) Caddie #%d ajouté au client #%d \"%s\" !\n", getpid(),idCaddie, m.expediteur, m.data2);
+                        m.type = tab->connexions[i].pidCaddie;
+                        if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0) == -1)
+                        {
+                            fprintf(stderr, "(SERVEUR %d) Erreur de msgsnd", getpid());
+                        }
                     }
                     else {
                         fprintf(stderr, "(SERVEUR %d) Impossible d'associer un caddie au client #%d \"%s\" !\n", getpid(), m.expediteur, m.data2);
@@ -228,9 +252,16 @@ int main()
                     }
 
                     fprintf(stderr, "(SERVEUR %d) Client \"%s\" logé !\n", getpid(), m.data2);
+                    if (m.data1 == 1) // Si nouveau client 
+                    {
+                        sprintf(m.data4, "Bonjour %s !", m.data2);
+                    }
+                    else
+                    {
+                        sprintf(m.data4, "Re-bonjour %s !", m.data2);
+                    }
                     m.data1 = 1;
-                    // TODO: Add username to welcome message 
-                    strcpy(m.data4, "Re-bonjour !");
+    
                     
                 }
 
@@ -319,7 +350,7 @@ int main()
             reponse.expediteur = tab->connexions[i].pidFenetre;
             reponse.data1 = m.data1;
             reponse.requete = CONSULT;
-            if(msgsnd(idQ, &reponse, sizeof(reponse) - sizeof(long), 0))
+            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
             {
                 perror("Erreur de msgsnd");
                 exit(1);
@@ -404,4 +435,9 @@ void SIGCHLDHANDLER (int signum)
         tab->connexions[i].pidCaddie = 0;
     }
     siglongjmp(contexte, 1);
+
+    //Fermeture du pipe 
+
+    close(fdPipe[0]);
+    close(fdPipe[1]);
 }
