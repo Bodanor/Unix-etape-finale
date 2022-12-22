@@ -194,7 +194,7 @@ int main()
 			/* Sinon, l'utilisateur essaye de se connecté */
             else {
 				/* Si le nom d'utlisateur n'est pas présent */
-                if ((status = estPresent(m.data2)) == -1){
+                if ((status = estPresent(m.data2)) <= 0){
                     fprintf(stderr, "(SERVEUR %d) Client \"%s\" Inconnu !\n", getpid(), m.data2);
 					m.data1 = 0;
 					strcpy(m.data4, "Nom d'utilisateur inconnu ! Veuillez d'abord vous enregistrer en cochant \"Nouveau client\"");
@@ -202,7 +202,7 @@ int main()
                 else{
 					/* Si c'est le cas, on verifie le mot de passe */
 
-                    if (verifieMotDePasse(status, m.data3)) {
+                    if (verifieMotDePasse(status, m.data3) == 1) {
                         logging_ok = 1;
 					}
 					else {

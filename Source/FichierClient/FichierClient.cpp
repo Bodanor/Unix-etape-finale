@@ -13,7 +13,7 @@ int estPresent(const char* nom)
     if ((fd = open(FICHIER_CLIENTS, O_RDONLY)) == -1)
     {
         return -1;
- }
+    }
     while ((test = read(fd, &client, sizeof(CLIENT))) == sizeof(CLIENT)){
         if (strcmp(nom, client.nom) == 0){
             close(fd);

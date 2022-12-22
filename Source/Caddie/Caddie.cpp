@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
             break;
 
         case CONSULT: // TO DO
-            printf("ID Article == %d\n", m.data1);
+        
             fprintf(stderr, "(CADDIE %d) Requete CONSULT reçue de %d\n", getpid(), m.expediteur);
 
             m.expediteur = getpid(); // CONNARD C A CAUSE DE TOI QU ON A GALERER FDP
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
                 exit(1);
             }
-            printf("\n\nm.expiditeur : %d\n m.type = %ld\n m.requete = %d\n\n", m.expediteur, m.type, m.requete);
+
             kill(pidClient, SIGUSR1);
             
             break;
