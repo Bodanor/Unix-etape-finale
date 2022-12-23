@@ -493,7 +493,7 @@ void WindowClient::on_pushButtonAcheter_clicked()
     m.requete = ACHAT;
     m.type = 1;
     m.data1 = articleEnCours.id;
-    sprintf(m.data2, "%s", getQuantite());
+    sprintf(m.data2, "%d", getQuantite());
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
@@ -616,7 +616,7 @@ void handlerSIGUSR1(int sig)
 {
     MESSAGE m;
     int tmp;
-
+    char tmp_dialogue[200];
     if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) != -1) // !!! a modifier en temps voulu !!!
     {
         switch (m.requete)
@@ -657,6 +657,16 @@ void handlerSIGUSR1(int sig)
             break;
 
         case ACHAT: // TO DO (étape 5)
+            if (strcmp(m.data3, "0") != 0)
+            {
+                w->ajouteArticleTablePanier(m.data2, m.data5, atoi(m.data3));
+                sprintf(tmp_dialogue, "%s unité(s) de %s achetées avec succès", m.data3, m.data2);
+                w->dialogueMessage("Achat", tmp_dialogue);
+            }
+            else
+            {
+                w->dialogueMessage("Achat", "Stock insuffisant !");
+            }
             break;
 
         case CADDIE: // TO DO (étape 5)

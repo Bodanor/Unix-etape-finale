@@ -361,6 +361,24 @@ int main()
 
         case ACHAT: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete ACHAT reçue de %d\n", getpid(), m.expediteur);
+            
+            i = 0;
+
+            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                i++;
+            if (tab->connexions[i].pidFenetre == m.expediteur)
+                idCaddie = tab->connexions[i].pidCaddie;
+            
+            reponse.type = idCaddie;
+            reponse.expediteur = tab->connexions[i].pidFenetre;
+            reponse.data1 = m.data1;
+            strcpy(reponse.data2, m.data2);
+            reponse.requete = ACHAT;
+            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsnd");
+                exit(1);
+            }
             break;
 
         case CADDIE: // TO DO

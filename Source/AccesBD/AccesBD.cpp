@@ -106,9 +106,67 @@ int main(int argc, char *argv[])
       case ACHAT :    // TO DO
                       fprintf(stderr,"(ACCESBD %d) Requete ACHAT reçue de %d\n",getpid(),m.expediteur);
                       // Acces BD
+                       sprintf(requete, "select * from UNIX_FINAL WHERE id = %d", m.data1);
+                      // Acces BD
+                      m.type = m.expediteur;
+                      m.expediteur = getpid();
+                      m.requete = ACHAT;
+        
+                      if (mysql_query(connexion, requete) == 0)
+                      {
+                        if ((resultat = mysql_store_result(connexion)) == NULL)
+                        {
+                            fprintf(stderr, "(ACCESBD %d) Impossible d'obtenir le résultat !\n", getpid());
+                        }
+                        else
+                        {
+                            printf("Data2 = %s||Ligne[3] = %s\n", m.data2, ligne[3]);
+                            if(strcmp(m.data2, ligne[3]) <= 0)
+                            {
+                                // L'achat est possible
+                                nbChamps = mysql_num_fields(resultat);
+                                if ((ligne = mysql_fetch_row(resultat)) != NULL)
+                                {
+                                    // Update de la base de donnée
 
-                      // Finalisation et envoi de la reponse
-                      break;
+                                    sprintf(requete, "update UNIX_FINAL set stock =stock-%d where id=%d", atoi(m.data2), m.data1);
+                                    printf("%s\n", requete);
+                                    if (mysql_query(connexion, requete) != 0)
+                                    {
+                                        // Impossible de mettre a jour la BD. Donc on retourne une erreur au client !
+                                        fprintf(stderr, "(ACCESBD %d) Impossible de mettre à jour la BD !\n", getpid());
+                                        sprintf(m.data3, "%s", "0");
+                                    }
+                                    else
+                                    { 
+                                        //Quantité OK et tout les tests de la connexion à la BD à fonctionner
+                                        fprintf(stderr, "(ACCESBD %d) Base de données mise à jour !\n", getpid());
+                                        m.data1 = temp;
+                                        strcpy(m.data3, m.data2);
+                                        strcpy(m.data2, ligne[1]);
+                                        strcpy(m.data4, ligne[4]);
+                                        m.data5 = atof(ligne[2]);
+                                    }
+                                }
+                                else
+                                    fprintf(stderr, "(ACCESBD %d) Une erreur interne à la requete est survenue !\n", getpid());
+                            }
+                            else
+                            {
+                                sprintf(m.data3, "%s", "0");
+                            }  
+                          }
+                        }
+                        else
+                        {
+                            fprintf(stderr, "(ACCESBD %d) Impossible d'envoyer la requete !\n", getpid());
+                        }
+                          
+
+                    // Finalisation et envoi de la reponse
+                    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                            fprintf(stderr, "(ACCESBD %d) Apres Pipe : Erreur de msgsend", getpid());
+                    break;
 
       case CANCEL :   // TO DO
                       fprintf(stderr,"(ACCESBD %d) Requete CANCEL reçue de %d\n",getpid(),m.expediteur);

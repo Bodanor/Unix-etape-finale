@@ -113,9 +113,33 @@ int main(int argc, char *argv[])
 
             // on transfert la requete à AccesBD
 
+        
+            m.expediteur = getpid();
+            if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
+                fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
+                printf("%d != %d\n", (int)strlen(requete) + 1, ret);
+                exit(1);
+            }
             // on attend la réponse venant de AccesBD
 
-            // Envoi de la reponse au client
+            if(msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
+            {
+                fprintf(stderr, "CADDIE (apres le pipe) Erreur de msgrcv : ");
+                exit(1);
+            }
+            m.type = pidClient;
+            m.requete = ACHAT;
+            m.expediteur = getpid();
+
+             // Envoi de la reponse au client
+
+            if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
+                exit(1);
+            }
+
+            kill(pidClient, SIGUSR1);
 
             break;
 
