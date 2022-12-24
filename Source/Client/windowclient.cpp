@@ -99,11 +99,6 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
         exit(1);
     }
     printf("Client %d) Envoi requête, attente réponse...\n", getpid());
-
-    // Exemples à supprimer
-    setPublicite("Promotions sur les concombres !!!");
-    setArticle("pommes", 5.53, 18, "pommes.jpg");
-    ajouteArticleTablePanier("cerises", 8.96, 2);
 }
 
 WindowClient::~WindowClient()
@@ -494,10 +489,16 @@ void WindowClient::on_pushButtonAcheter_clicked()
     m.type = 1;
     m.data1 = articleEnCours.id;
     sprintf(m.data2, "%d", getQuantite());
-    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
-    {
-        perror("(Client) Erreur de msgsend");
-        exit(1);
+    // Ne pas faire de requete lorsque l'achat est à 0
+    if (getQuantite() == 0) {
+        dialogueErreur("Achat impossible", "Vous ne pouvez acheter 0 quantitées !");
+    }
+    else {
+        if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+        {
+            perror("(Client) Erreur de msgsend");
+            exit(1);
+        }
     }
     
 }
