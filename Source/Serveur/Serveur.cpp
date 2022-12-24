@@ -97,6 +97,7 @@ int main()
 
     // Creation du processus Publicite (étape 2)
 
+    
     tab->pidPublicite = fork();
     if (tab->pidPublicite == 0) {
         if (execlp("./Publicite", "Publicite", NULL) == -1) {
@@ -104,6 +105,7 @@ int main()
             exit(1);
         }
     }
+    
 
     // Creation du processus AccesBD (étape 4)
     // TO DO
@@ -324,14 +326,16 @@ int main()
         case UPDATE_PUB: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete UPDATE_PUB reçue de %d\n", getpid(), m.expediteur);
 
+            
             for (unsigned int i = 0; i < 6; i++) {
                 if (tab->connexions[i].pidFenetre != 0) {
                     fprintf(stderr, "(SERVEUR %d) Envoie du signal SIGUSR2(Update PUB) au client #%d\n", getpid(), m.expediteur);
                     kill(tab->connexions[i].pidFenetre, SIGUSR2);
                 }
             }
+            
             break;
-
+            
         case CONSULT: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete CONSULT reçue de %d\n", getpid(), m.expediteur);
             
@@ -374,6 +378,9 @@ int main()
             reponse.data1 = m.data1;
             strcpy(reponse.data2, m.data2);
             reponse.requete = ACHAT;
+
+            fprintf(stderr, "(SERVEUR %d) Envoie de la requete ACHAT au Caddie #%ld \n", getpid(), m.type);
+
             if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
             {
                 perror("Erreur de msgsnd");
@@ -383,6 +390,30 @@ int main()
 
         case CADDIE: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete CADDIE reçue de %d\n", getpid(), m.expediteur);
+            
+            i = 0;
+            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                i++;
+
+            if (tab->connexions[i].pidFenetre == m.expediteur)
+                idCaddie = tab->connexions[i].pidCaddie;
+            
+            reponse.type = idCaddie;
+            reponse.expediteur = tab->connexions[i].pidFenetre;
+            reponse.requete = CADDIE;
+            reponse.data1 = m.data1;
+            strcpy(reponse.data2, m.data2);
+            strcpy(reponse.data3, m.data3);
+            strcpy(reponse.data4, m.data4);
+            reponse.data5 = m.data5;
+
+            fprintf(stderr, "(SERVEUR %d) Envoie de la requete CADDIE au Caddie #%ld \n", getpid(), reponse.type);
+
+            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsnd");
+                exit(1);
+            }
             break;
 
         case CANCEL: // TO DO

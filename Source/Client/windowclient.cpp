@@ -615,6 +615,7 @@ void WindowClient::on_pushButtonPayer_clicked()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void handlerSIGUSR1(int sig)
 {
+    fprintf(stderr, "(Client %d) Signal SIGUSR1 recu !\n", getpid());
     MESSAGE m;
     int tmp;
     char tmp_dialogue[200];
@@ -623,6 +624,7 @@ void handlerSIGUSR1(int sig)
         switch (m.requete)
         {
         case LOGIN:
+            printf("Client %d) Requete LOGIN reçue de Caddie ...\n", getpid());
             if (m.data1 == 1)
             {
                 w->dialogueMessage("Login", m.data4);
@@ -658,9 +660,9 @@ void handlerSIGUSR1(int sig)
             break;
 
         case ACHAT: // TO DO (étape 5)
+            printf("Client %d) Requete ACHAT reçue de Caddie ...\n", getpid());
             if (strcmp(m.data3, "0") != 0)
             {
-                w->ajouteArticleTablePanier(m.data2, m.data5, atoi(m.data3));
                 sprintf(tmp_dialogue, "%s unité(s) de %s achetées avec succès", m.data3, m.data2);
                 w->dialogueMessage("Achat", tmp_dialogue);
             }
@@ -668,9 +670,31 @@ void handlerSIGUSR1(int sig)
             {
                 w->dialogueMessage("Achat", "Stock insuffisant !");
             }
+            fprintf(stderr, "Client %d) Envoi d'une requête de CADDIE ...\n", getpid());
+            
+            m.type = 1;
+            m.expediteur = getpid();
+            m.requete = CADDIE;
+            m.data1 = 0;
+            *m.data2 = '\0';
+            *m.data3 = '\0';
+            *m.data4 = '\0';
+            m.data5 = 0.0f;
+            
+            if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0)) {
+                perror("(Client) Erreur de msgsend");
+                exit(1);
+            }
+
+            w->videTablePanier();
+            totalCaddie = 0.0f;
             break;
 
         case CADDIE: // TO DO (étape 5)
+            printf("Client %d) Requete CADDIE reçue de Caddie ...\n", getpid());
+            w->ajouteArticleTablePanier(m.data2, m.data5, atoi(m.data3));
+            totalCaddie += m.data5*atoi(m.data3);
+            w->setTotal(totalCaddie);
             break;
 
         case TIME_OUT: // TO DO (étape 6)

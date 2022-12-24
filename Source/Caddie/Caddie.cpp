@@ -95,9 +95,11 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "CADDIE (apres le pipe) Erreur de msgrcv : ");
                 exit(1);
             }
+            fprintf(stderr, "(CADDIE %d) Requete CONSULT reçue de ACCESBD %d\n", getpid(), m.expediteur);
             m.type = pidClient;
             m.requete = CONSULT;
             m.expediteur = getpid();
+            fprintf(stderr, "(CADDIE %d) Envoie de la requete CONSULT à client %ld\n", getpid(), m.type);
             if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
             {
                 fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
@@ -113,7 +115,7 @@ int main(int argc, char *argv[])
 
             // on transfert la requete à AccesBD
 
-        
+            fprintf(stderr, "(CADDIE %d) Envoie de la requete ACHAT à ACCESBD sur le pipe\n", getpid());
             m.expediteur = getpid();
             if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
                 fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
@@ -127,10 +129,23 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "CADDIE (apres le pipe) Erreur de msgrcv : ");
                 exit(1);
             }
+            fprintf(stderr, "(CADDIE %d) Requete ACHAT reçue de ACCESBD \n", getpid());
+            if (strcmp(m.data3, "0") != 0) {
+                // L'achat à été possible
+                articles[nbArticles].id = m.data1;
+                strcpy(articles[nbArticles].intitule, m.data2);
+                articles[nbArticles].stock = atoi(m.data3);
+                strcpy(articles[nbArticles].image, m.data4);
+                articles[nbArticles].prix = m.data5;
+                nbArticles++;
+
+            }
+
             m.type = pidClient;
             m.requete = ACHAT;
             m.expediteur = getpid();
 
+            fprintf(stderr, "(CADDIE %d) Envoie de la requete ACHAT au client #%ld\n", getpid(), m.type);
              // Envoi de la reponse au client
 
             if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
@@ -145,6 +160,28 @@ int main(int argc, char *argv[])
 
         case CADDIE: // TO DO
             fprintf(stderr, "(CADDIE %d) Requete CADDIE reçue de %d\n", getpid(), m.expediteur);
+            
+            for (int i = 0; i < nbArticles; i++) {
+                m.type = pidClient;
+                m.expediteur = getpid();
+                m.requete = CADDIE;
+                m.data1 = articles[i].id;
+                strcpy(m.data2, articles[i].intitule);
+                sprintf(m.data3, "%d", articles[i].stock);
+                strcpy(m.data4, articles[i].image);
+                m.data5 = articles[i].prix;
+                
+                fprintf(stderr, "(CADDIE %d) Envoi de la requete CADDIE au client #%ld\n", getpid(), m.type);
+                if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                {
+                    fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
+                    exit(1);
+                }
+
+                if (kill(pidClient, SIGUSR1) == -1) {
+                    perror("Erreur de kill");
+                }
+            }
             break;
 
         case CANCEL: // TO DO
