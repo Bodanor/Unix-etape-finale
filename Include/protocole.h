@@ -12,9 +12,9 @@
 //                          S  -> Ca  idArticle
 //                          Ca -> BD  idArticle
 //                          BD -> Ca  idArticle ou -1 intitule      stock          image          prix
-//                          Ca -> Cl  idArticle       quantite
-//                          S  -> Ca  idArticle       intitule      stock          image          prix
+//                          Ca -> Cl  idArticle       intitule      stock          image          prix
 #define ACHAT         7  // Cl -> S   idArticle       quantite
+//                          S  -> Ca  idArticle       quantite
 //                          Ca -> BD  idArticle       quantite
 //                          BD -> Ca  idArticle       intitule      quantite ou 0  image          prix
 //                          Ca -> Cl  idArticle       intitule      quantite ou 0  image          prix
@@ -69,17 +69,3 @@ typedef struct
   CONNEXION connexions[6];
 } TAB_CONNEXIONS;
 
-
-void print_message(MESSAGE *m)
-{
-    printf("MESSAGE : \n\n");
-    printf("TYPE : %ld\n", m->type);
-    printf("EXPIDITEUR : %d\n", m->expediteur);
-    printf("REQUETE : %d\n\n", m->requete);
-    printf("M.DATA1 : %d\n", m->data1);
-    printf("M.DATA2 : %s\n", m->data2);
-    printf("M.DATA3 : %s\n", m->data3);
-    printf("M.DATA4 : %s\n", m->data4);
-    printf("M.DATA5 : %f\n", m->data5);
-
-}

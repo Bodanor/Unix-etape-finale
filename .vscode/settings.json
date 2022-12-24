@@ -28,7 +28,6 @@
         "system_error": "cpp",
         "ratio": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp",
-        "debug.h": "c"
+        "variant": "cpp"
     }
 }

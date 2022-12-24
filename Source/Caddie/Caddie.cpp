@@ -14,8 +14,6 @@
 #include <mysql.h>
 #include "protocole.h" // contient la cle et la structure d'un message
 
-
-
 int idQ;
 
 ARTICLE articles[10];
@@ -113,7 +111,6 @@ int main(int argc, char *argv[])
         case ACHAT: // TO DO
             fprintf(stderr, "(CADDIE %d) Requete ACHAT reçue de %d\n", getpid(), m.expediteur);
 
-            printf("JE SUIS DANS CADDIE SECTION ACHAT \n");
             // on transfert la requete à AccesBD
 
         
@@ -130,17 +127,6 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "CADDIE (apres le pipe) Erreur de msgrcv : ");
                 exit(1);
             }
-            
-            if (strcmp(m.data3, "0") != 0 && nbArticles < 10) {
-               
-                articles[nbArticles].id = m.data1;
-                strcpy(articles[nbArticles].intitule, m.data2);
-                articles[nbArticles].stock = atoi(m.data3);
-                strcpy(articles[nbArticles].image, m.data4);
-                articles[nbArticles].prix = m.data5;
-                nbArticles++;
-            }
-
             m.type = pidClient;
             m.requete = ACHAT;
             m.expediteur = getpid();
@@ -152,34 +138,13 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
                 exit(1);
             }
-            
-            printf("JE SUIS DANS CADDIE SECTION ACHAT ENVOIE REPONSE\n");
+
             kill(pidClient, SIGUSR1);
 
             break;
 
         case CADDIE: // TO DO
             fprintf(stderr, "(CADDIE %d) Requete CADDIE reçue de %d\n", getpid(), m.expediteur);
-            
-            m.expediteur = m.type;
-            m.type = pidClient;
-            for (unsigned int i = 0; i < nbArticles; i++) {
-                
-                m.data1 = articles[i].id;
-                strcpy(m.data2, articles[i].intitule);
-                sprintf(m.data3, "%d", articles[i].stock);
-                strcpy(m.data4, articles[i].image);
-                m.data5 = articles[i].prix;
-                if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
-                {
-                    perror("Erreur de msgsend : ");
-                    exit(1);
-                }
-                printf("CADDIE ENVOIE : \n");
-                print_message(&m);
-                kill(pidClient, SIGUSR1);
-                
-            }
             break;
 
         case CANCEL: // TO DO
