@@ -18,6 +18,7 @@ int idQ;
 MYSQL *connexion;
 int temp;
 
+
 int main(int argc, char *argv[])
 {
     // Masquage de SIGINT
@@ -50,6 +51,9 @@ int main(int argc, char *argv[])
     int nbChamps;
     MYSQL_RES *resultat;
     MYSQL_ROW ligne;
+
+    int data2;
+    int ligne3;
     while (1)
     {
         // Lecture d'une requete sur le pipe
@@ -120,8 +124,16 @@ int main(int argc, char *argv[])
                         }
                         else
                         {
-                            printf("Data2 = %s||Ligne[3] = %s\n", m.data2, ligne[3]);
-                            if(strcmp(m.data2, ligne[3]) <= 0)
+                            /* 
+                             * Ne pas utiliser strcmp directement car strcmp compare le premier caractère avec l'autre
+                             * Si on a 3 et 15 et qu'on souhaite comparer, strcmp va nous retourne que 3 est plus grand que 15
+                             * Car il compare 3 et 1 et pas 3 et 15 !!!!
+                             * Ici, on utilise des variables ou on convertis de char* en int pour comparer des INT
+                             */
+
+                            data2 = atoi(m.data2);
+                            ligne3 = atoi(ligne[3]);
+                            if(data2<=ligne3)
                             {
                                 // L'achat est possible
                                 nbChamps = mysql_num_fields(resultat);
@@ -141,7 +153,6 @@ int main(int argc, char *argv[])
                                     { 
                                         //Quantité OK et tout les tests de la connexion à la BD à fonctionner
                                         fprintf(stderr, "(ACCESBD %d) Base de données mise à jour !\n", getpid());
-                                        m.data1 = temp;
                                         strcpy(m.data3, m.data2);
                                         strcpy(m.data2, ligne[1]);
                                         strcpy(m.data4, ligne[4]);

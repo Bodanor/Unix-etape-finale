@@ -17,6 +17,8 @@
 #include "protocole.h" // contient la cle et la structure d'un message
 #include "FichierClient.h"
 
+
+
 int idQ, idShm, idSem;
 int fdPipe[2];
 TAB_CONNEXIONS *tab;
@@ -361,7 +363,7 @@ int main()
 
         case ACHAT: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete ACHAT reçue de %d\n", getpid(), m.expediteur);
-            
+            printf("JE SUIS DANS SERVEUR SECTION ACHAT \n");
             i = 0;
 
             while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
@@ -383,6 +385,20 @@ int main()
 
         case CADDIE: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete CADDIE reçue de %d\n", getpid(), m.expediteur);
+
+            i = 0;
+
+            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                i++;
+            
+            if (tab->connexions[i].pidFenetre == m.expediteur) {
+                m.type = tab->connexions[i].pidCaddie;
+                if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                {
+                    perror("Erreur de msgsnd");
+                    exit(1);
+                }
+            }
             break;
 
         case CANCEL: // TO DO

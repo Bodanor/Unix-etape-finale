@@ -13,6 +13,8 @@ using namespace std;
 #include <sys/shm.h>
 #include <signal.h>
 
+
+
 extern WindowClient *w;
 
 int idQ, idShm;
@@ -100,10 +102,6 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
     }
     printf("Client %d) Envoi requête, attente réponse...\n", getpid());
 
-    // Exemples à supprimer
-    setPublicite("Promotions sur les concombres !!!");
-    setArticle("pommes", 5.53, 18, "pommes.jpg");
-    ajouteArticleTablePanier("cerises", 8.96, 2);
 }
 
 WindowClient::~WindowClient()
@@ -525,7 +523,7 @@ void WindowClient::on_pushButtonSupprimer_clicked()
     w->setTotal(-1.0);
 
     // Envoi requete CADDIE au serveur
-
+    
     printf("Client %d) Envoi d'une requête de caddie...\n", getpid());
     m.expediteur = getpid();
     m.requete = CADDIE;
@@ -659,19 +657,47 @@ void handlerSIGUSR1(int sig)
         case ACHAT: // TO DO (étape 5)
             if (strcmp(m.data3, "0") != 0)
             {
-                w->ajouteArticleTablePanier(m.data2, m.data5, atoi(m.data3));
                 sprintf(tmp_dialogue, "%s unité(s) de %s achetées avec succès", m.data3, m.data2);
                 w->dialogueMessage("Achat", tmp_dialogue);
+                
+                w->videTablePanier();
+                totalCaddie = 0.0;
+                m.expediteur = m.type;
+                m.requete = CADDIE;
+                m.type = 1;
+                //On vide les data de la structure de message car on doit renvoyer une structure sans data à serveur
+                m.data1 = 0;
+
+                *m.data2 = '\0';
+                *m.data3 = '\0';
+                *m.data4 = '\0';
+                m.data5 = 0;
+            
+
             }
             else
             {
                 w->dialogueMessage("Achat", "Stock insuffisant !");
+            } 
+
+            if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsend : ");
+                exit(1);
             }
             break;
 
         case CADDIE: // TO DO (étape 5)
+            printf("CLIENT RECOIS DE CADDIE : \n");
+            printf("Client %d) Requete CADDIE reçue de Caddie ...\n", getpid());
+    
+            w->ajouteArticleTablePanier(m.data2, m.data5, atoi(m.data3));
+            
+            printf("m.data5 : %f || m.data3 : %f\n",m.data5, strtod(m.data3, NULL));
+            //totalCaddie += m.data5*strtod(m.data3, NULL);
+            totalCaddie = 436.873874;
+            w->setTotal(totalCaddie);
             break;
-
         case TIME_OUT: // TO DO (étape 6)
             break;
 
@@ -687,10 +713,12 @@ void handlerSIGUSR1(int sig)
 void handlerSIGUSR2(int sig)
 {
 
+    /*
     if ((pShm = (char*)shmat(idShm, NULL, 0)) == (void*)-1) {
         perror("Impossible de s'attacher à la mémoire partagée !\n");
         exit(1);
     }
     w->setPublicite(pShm);
+    */
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
