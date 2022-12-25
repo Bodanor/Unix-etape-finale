@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
                     }
                     else{
                         fprintf(stderr, "(ACCESBD %d) Une erreur interne à la requete est survenue !\n", getpid());
-						sprintf(m.data3, "%s", "0");
+						sprintf(m.data3, "%s", "-1");
 						}
                 }
             }
@@ -175,7 +175,19 @@ int main(int argc, char *argv[])
         case CANCEL: // TO DO
             fprintf(stderr, "(ACCESBD %d) Requete CANCEL reçue de %d\n", getpid(), m.expediteur);
             // Acces BD
-
+            sprintf(requete, "update UNIX_FINAL set stock =stock+%d where id=%d", atoi(m.data2), m.data1);
+            printf("%s\n", requete);
+            if (mysql_query(connexion, requete) != 0)
+            {
+                // Impossible de mettre a jour la BD. Donc on retourne une erreur au client !
+                fprintf(stderr, "(ACCESBD %d) Impossible de mettre à jour la BD !\n", getpid());
+                m.data1 = -1;
+            }
+            m.type = m.expediteur;
+            m.expediteur = getpid();
+            // probleme car cadddie recoit une requete de client a la place de celle-ci
+            if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                fprintf(stderr, "(ACCESBD %d) : Erreur de msgsend", getpid());
             // Mise à jour du stock en BD
             break;
         }

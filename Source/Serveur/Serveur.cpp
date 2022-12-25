@@ -91,13 +91,10 @@ int main()
         tab->connexions[i].pidCaddie = 0;
     }
     tab->pidServeur = getpid();
-    tab->pidPublicite = 0;
-
-    afficheTab();
 
     // Creation du processus Publicite (étape 2)
 
-    
+    /*
     tab->pidPublicite = fork();
     if (tab->pidPublicite == 0) {
         if (execlp("./Publicite", "Publicite", NULL) == -1) {
@@ -105,7 +102,9 @@ int main()
             exit(1);
         }
     }
+    */
     
+    afficheTab();
 
     // Creation du processus AccesBD (étape 4)
     // TO DO
@@ -401,11 +400,11 @@ int main()
             reponse.type = idCaddie;
             reponse.expediteur = tab->connexions[i].pidFenetre;
             reponse.requete = CADDIE;
-            reponse.data1 = m.data1;
-            strcpy(reponse.data2, m.data2);
-            strcpy(reponse.data3, m.data3);
-            strcpy(reponse.data4, m.data4);
-            reponse.data5 = m.data5;
+            reponse.data1 = 0;
+            *reponse.data2 = '\0';
+            *reponse.data3 = '\0';
+            *reponse.data4 = '\0';
+            reponse.data5 = 0.0f;
 
             fprintf(stderr, "(SERVEUR %d) Envoie de la requete CADDIE au Caddie #%ld \n", getpid(), reponse.type);
 
@@ -418,6 +417,25 @@ int main()
 
         case CANCEL: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete CANCEL reçue de %d\n", getpid(), m.expediteur);
+            
+            i = 0;
+            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                i++;
+
+            if (tab->connexions[i].pidFenetre == m.expediteur)
+                idCaddie = tab->connexions[i].pidCaddie;
+
+            reponse.type = idCaddie;
+            reponse.expediteur = tab->connexions[i].pidFenetre;
+            reponse.requete = CANCEL;
+            reponse.data1 = m.data1;
+
+            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsnd : ");
+                exit(1);
+            }
+
             break;
 
         case CANCEL_ALL: // TO DO

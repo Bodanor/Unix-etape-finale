@@ -511,15 +511,25 @@ void WindowClient::on_pushButtonSupprimer_clicked()
     // Envoi d'une requete CANCEL au serveur
     MESSAGE m;
     int ret;
+    char tmp_dialogue[80];
     printf("Client %d) Envoi d'une requête de cancel...\n", getpid());
     m.expediteur = getpid();
     m.requete = CANCEL;
     m.type = 1;
+    
     ret = getIndiceArticleSelectionne();
-    if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+    if(ret == -1)
     {
-        perror("(Client) Erreur de msgsend");
-        exit(1);
+        strcpy(tmp_dialogue,"Aucun article selectionné !!(Faites un effort svp)");
+        w->dialogueMessage("Achat", tmp_dialogue);
+    }
+    else {
+        m.data1 = ret;
+        if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+        {
+            perror("(Client) Erreur de msgsend");
+            exit(1);
+        }
     }
 
     // Mise à jour du caddie
@@ -538,6 +548,7 @@ void WindowClient::on_pushButtonSupprimer_clicked()
         perror("(Client) Erreur de msgsend");
         exit(1);
     }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -663,15 +674,14 @@ void handlerSIGUSR1(int sig)
 
         case ACHAT: // TO DO (étape 5)
             printf("Client %d) Requete ACHAT reçue de Caddie ...\n", getpid());
-            if (strcmp(m.data3, "0") != 0)
+            if (strcmp(m.data3, "0") != 0 && m.data1 != -1)
             {
                 sprintf(tmp_dialogue, "%s unité(s) de %s achetées avec succès", m.data3, m.data2);
                 w->dialogueMessage("Achat", tmp_dialogue);
             }
             else
-            {
                 w->dialogueMessage("Achat", "Stock insuffisant !");
-            }
+
             fprintf(stderr, "Client %d) Envoi d'une requête de CADDIE ...\n", getpid());
             
             m.type = 1;

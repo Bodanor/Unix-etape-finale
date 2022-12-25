@@ -52,7 +52,8 @@ int main(int argc, char *argv[])
     char requete[200];
     char newUser[20];
     int ret;
-
+    int temp_int;
+    int i;
     // Récupération descripteur écriture du pipe
      fdWpipe = atoi(argv[1]); //HOUSTON WE HAVE A PROBLEM
 
@@ -131,15 +132,19 @@ int main(int argc, char *argv[])
             }
             fprintf(stderr, "(CADDIE %d) Requete ACHAT reçue de ACCESBD \n", getpid());
             if (strcmp(m.data3, "0") != 0) {
-                // L'achat à été possible
-                articles[nbArticles].id = m.data1;
-                strcpy(articles[nbArticles].intitule, m.data2);
-                articles[nbArticles].stock = atoi(m.data3);
-                strcpy(articles[nbArticles].image, m.data4);
-                articles[nbArticles].prix = m.data5;
-                nbArticles++;
+                if (nbArticles < 10) {
+                    // L'achat à été possible
+                    articles[nbArticles].id = m.data1;
+                    strcpy(articles[nbArticles].intitule, m.data2);
+                    articles[nbArticles].stock = atoi(m.data3);
+                    strcpy(articles[nbArticles].image, m.data4);
+                    articles[nbArticles].prix = m.data5;
+                    nbArticles++;
+                }
 
             }
+            else
+                m.data1 = -1;
 
             m.type = pidClient;
             m.requete = ACHAT;
@@ -189,8 +194,38 @@ int main(int argc, char *argv[])
             fprintf(stderr, "(CADDIE %d) Requete CANCEL reçue de %d\n", getpid(), m.expediteur);
 
             // on transmet la requete à AccesBD
-
-            // Suppression de l'aricle du panier
+            fprintf(stderr, "(CADDIE %d) Envoie de la requete CANCEL à ACCESBD sur le pipe\n", getpid());
+            m.expediteur = getpid();
+            temp_int = m.data1; // Variable tampon car m.data1 vers ACCESBD contiendra non pas l'indice mais l'ID de l'article
+            
+            printf("---------------------\n");
+            m.data1 = articles[temp_int].id;
+            sprintf(m.data2, "%d", articles[temp_int].stock);
+            if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
+                fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
+                printf("%d != %d\n", (int)strlen(requete) + 1, ret);
+                exit(1);
+            }
+            // on attend la réponse venant de AccesBD
+            if(msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
+            {
+                fprintf(stderr,"Erreur de msgrcv : ");
+                exit(1);
+            }
+            fprintf(stderr, "(CADDIE %d) Requete D'ACCESSBD reçue \n", getpid());
+            // Suppression de l'article du panier
+            if(m.data1!=-1)
+            {
+                
+                for(i = temp_int; i<9;i++)
+                    articles[i] = articles[i+1];
+                
+                nbArticles--;
+            }
+            else {
+                fprintf(stderr, "(CADDIE %d) Erreur de BD !\n", getpid());
+            }
+            
             break;
 
         case CANCEL_ALL: // TO DO
