@@ -185,7 +185,20 @@ int main(int argc, char *argv[])
             }
             m.type = m.expediteur;
             m.expediteur = getpid();
-            // probleme car cadddie recoit une requete de client a la place de celle-ci
+            /*
+			 * On ne peux pas faire de msgsnd ici Car Si Tu Regardes Dans Client, Lorsque On Appuie Sur Le Bouton Supprimer
+			 * Pour Supprimer Un Article, On Fait Msgsnd De Cancel Suivit D'Une Requete Caddie. Or Dans Caddie, Lorsque On 
+			 * REcoit Une Requete Cancel, Et Qu'On Envoie Cette Meme Requete Vers Accesbd, Le Processus Caddie Attend Une Confirmation De Accesbd...
+			 * Sauf Que Comme J'Ai Dit Au Début, Client Fait Une Requete Cancel Suivit De Caddie. Donc Caddie Une Fois
+			 * CA Requete Cancel Envoyée À Accesbd, Il Recoit Pas La Reponse De Accesbd Mais La Requete Caddie Dans Le Switch De Cancel.
+			 * Ce Qui À Pour Effet De Rentrer 2 Fois Dans Le Switch De Cancel Et Donc Supprimer Tout Le Caddie.
+			 * Si Tu Veux, Regarde Les Log Sur Serveur Quand Tu Achete 3 Fois Un Truc Et Que Tu Delete Un Article Tu Verras le CANCEL
+			 * apparaitre 2 fois car j'ai laisser un printf("--------------") !!!
+			 */
+
+			// Je met donc ça en commentaire et tu peux supprimer toute cette section de commentaire une fois que tu as pigé ce que je voulais t'expliquer
+			// Supprime aussi le msgsnd just en dessous bien sur
+			
             if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
                 fprintf(stderr, "(ACCESBD %d) : Erreur de msgsend", getpid());
             // Mise à jour du stock en BD
