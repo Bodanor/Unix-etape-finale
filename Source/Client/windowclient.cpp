@@ -69,9 +69,10 @@ WindowClient::WindowClient(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
 
     // Armement des signaux
     struct sigaction sigusr1;
-    sigusr1.sa_flags = 0;
+    sigusr1.sa_flags = SA_NODEFER;
     sigusr1.sa_handler = handlerSIGUSR1;
     sigemptyset(&sigusr1.sa_mask);
+    sigaddset(&sigusr1.sa_mask, SIGUSR1);
     sigaction(SIGUSR1, &sigusr1, NULL);
 
     struct sigaction User2;
@@ -509,11 +510,12 @@ void WindowClient::on_pushButtonSupprimer_clicked()
     // TO DO (étape 6)
     // Envoi d'une requete CANCEL au serveur
     MESSAGE m;
-
+    int ret;
     printf("Client %d) Envoi d'une requête de cancel...\n", getpid());
     m.expediteur = getpid();
     m.requete = CANCEL;
     m.type = 1;
+    ret = getIndiceArticleSelectionne();
     if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
     {
         perror("(Client) Erreur de msgsend");
@@ -618,7 +620,7 @@ void handlerSIGUSR1(int sig)
     fprintf(stderr, "(Client %d) Signal SIGUSR1 recu !\n", getpid());
     MESSAGE m;
     int tmp;
-    char tmp_dialogue[200];
+    char tmp_dialogue[100];
     if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) != -1) // !!! a modifier en temps voulu !!!
     {
         switch (m.requete)
@@ -681,16 +683,20 @@ void handlerSIGUSR1(int sig)
             *m.data4 = '\0';
             m.data5 = 0.0f;
             
+            
             if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0)) {
                 perror("(Client) Erreur de msgsend");
                 exit(1);
             }
+            
+            
 
             w->videTablePanier();
             totalCaddie = 0.0f;
             break;
 
         case CADDIE: // TO DO (étape 5)
+            
             printf("Client %d) Requete CADDIE reçue de Caddie ...\n", getpid());
             w->ajouteArticleTablePanier(m.data2, m.data5, atoi(m.data3));
             totalCaddie += m.data5*atoi(m.data3);

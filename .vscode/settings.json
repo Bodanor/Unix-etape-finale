@@ -28,6 +28,8 @@
         "system_error": "cpp",
         "ratio": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "qmessagebox": "cpp",
+        "types.h": "c"
     }
 }

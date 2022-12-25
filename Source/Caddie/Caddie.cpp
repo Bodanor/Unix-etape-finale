@@ -177,11 +177,12 @@ int main(int argc, char *argv[])
                     fprintf(stderr, "(CADDIE %d) Erreur de msgsend\n", getpid());
                     exit(1);
                 }
-
+                usleep(10000); // Fix car trop de signaux envoyer ne meme temps
                 if (kill(pidClient, SIGUSR1) == -1) {
                     perror("Erreur de kill");
                 }
             }
+            
             break;
 
         case CANCEL: // TO DO
