@@ -116,11 +116,23 @@ int main()
 
 void handlerSIGUSR1(int sig)
 {
+    MESSAGE m;
     fprintf(stderr, "(PUBLICITE %d) Nouvelle publicite !\n", getpid());
 
-    /* TODO*/
-    // Lecture message NEW_PUB
-
-    // Mise en place de la publicité en mémoire partagée
+    if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1) {
+        fprintf(stderr, "(PUBLICITE %d) Erreur de msgrcv !\n", getpid());
+        exit(1);
+    }
+    else
+    {
+        char pub[51];
+        strcpy(pub, m.data4);
+        for (int i = 0; i <= 50; i++)
+            pShm[i] = ' ';
+        pShm[51] = '\0';
+        int indDebut = 25 - strlen(pub) / 2;
+        for (int i = 0; i < strlen(pub); i++)
+            pShm[indDebut + i] = pub[i];
+    }
 }
 

@@ -30,6 +30,7 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "qmessagebox": "cpp",
-        "types.h": "c"
+        "types.h": "c",
+        "iostream": "cpp"
     }
 }

@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <setjmp.h>
 
+
 #include "protocole.h" // contient la cle et la structure d'un message
 #include "FichierClient.h"
 
@@ -62,7 +63,7 @@ int main()
     // Creation de la memoire partagée
     fprintf(stderr, "(SERVEUR %d) Creation de la memoire partagée\n", getpid());
     int taille = 52;
-    if (idShm = shmget(idQ, taille, IPC_CREAT | IPC_EXCL | 0600) == -1)
+    if ((idShm = shmget(idQ, taille, IPC_CREAT | IPC_EXCL | 0600)) == -1)
     {
         perror("Erreur de shmget");
         exit(1);
@@ -80,6 +81,12 @@ int main()
         exit(1);
     }
     
+    // Creation du sémaphore
+    fprintf(stderr, "(SERVEUR %d) Creation de du sémaphore\n", getpid());
+    if ((idSem = semget(idQ, 1,IPC_CREAT | IPC_EXCL | 0600)) == -1) {
+        perror("Erreur de semget");
+        exit(1);
+    }
 
     // Initialisation du tableau de connexions
     tab = (TAB_CONNEXIONS *)malloc(sizeof(TAB_CONNEXIONS));
@@ -483,6 +490,17 @@ int main()
 
         case NEW_PUB: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete NEW_PUB reçue de %d\n", getpid(), m.expediteur);
+            reponse.type = tab->pidPublicite;
+            reponse.requete = NEW_PUB;
+            reponse.expediteur = m.expediteur;
+            strcpy(reponse.data4, m.data4);
+
+            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsnd : ");
+                exit(1);
+            }
+            kill(tab->pidPublicite, SIGUSR1);
             break;
         }
         afficheTab();
