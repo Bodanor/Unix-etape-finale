@@ -462,6 +462,23 @@ int main()
 
         case PAYER: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete PAYER reçue de %d\n", getpid(), m.expediteur);
+            
+            i = 0;
+            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                i++;
+            
+            if (tab->connexions[i].pidFenetre == m.expediteur)
+                idCaddie = tab->connexions[i].pidCaddie;
+            
+            reponse.expediteur = m.expediteur;
+            reponse.requete = PAYER;
+            reponse.type = idCaddie;
+
+            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                perror("Erreur de msgsnd : ");
+                exit(1);
+            }
             break;
 
         case NEW_PUB: // TO DO

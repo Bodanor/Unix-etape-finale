@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 
         case PAYER: // TO DO
             fprintf(stderr, "(CADDIE %d) Requete PAYER reçue de %d\n", getpid(), m.expediteur);
-
+            nbArticles = 0;
             // On vide le panier
             break;
         }
