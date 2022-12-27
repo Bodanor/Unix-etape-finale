@@ -27,13 +27,24 @@ void handlerSIGALRM(int sig);
 
 int main(int argc, char *argv[])
 {
+    // Armement des signaux
+    // TO DO
+    struct sigaction Alarm;
+    
+    Alarm.sa_handler = handlerSIGALRM;
+    sigemptyset(&Alarm.sa_mask);
+    Alarm.sa_flags = 0;
     // Masquage de SIGINT
+
+    if (sigaction(SIGALRM, &Alarm, NULL) == -1) {
+        perror("Erreur de sigaction");
+        exit(1);
+    }
     sigset_t mask;
     sigaddset(&mask, SIGINT);
     sigprocmask(SIG_SETMASK, &mask, NULL);
 
-    // Armement des signaux
-    // TO DO
+    // Masquage de SIGALRM
 
     // Recuperation de l'identifiant de la file de messages
     fprintf(stderr, "(CADDIE %d) Recuperation de l'id de la file de messages\n", getpid());
@@ -58,12 +69,13 @@ int main(int argc, char *argv[])
 
     while (1)
     {
+        alarm(5);
         if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
         {
             perror("(CADDIE) Erreur de msgrcv");
             exit(1);
         }
-        
+        alarm(0);
         switch (m.requete)
         {
         case LOGIN: // TO DO
@@ -251,10 +263,35 @@ int main(int argc, char *argv[])
 void handlerSIGALRM(int sig)
 {
     fprintf(stderr, "(CADDIE %d) Time Out !!!\n", getpid());
-
+    MESSAGE m;
+    int ret;
+    char requete[80];
     // Annulation du caddie et mise à jour de la BD
     // On envoie a AccesBD autant de requetes CANCEL qu'il y a d'articles dans le panier
-
+    while(nbArticles > 0) // Si il y a eu LOGOUT, il ne faut pas rentrer dans la boucle quand le client à déja payer
+    {
+        fprintf(stderr, "(CADDIE %d) Envoie de la requete CANCEL à ACCESBD sur le pipe\n", getpid());
+        m.expediteur = getpid();
+        m.requete = CANCEL;
+        
+        m.data1 = articles[nbArticles-1].id; // nbArticles-1 : Indice - 1, car si 1 article alors on accède à l'indice 1-1 == 0
+        sprintf(m.data2, "%d", articles[nbArticles-1].stock);
+        if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
+            fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
+            printf("%d != %d\n", (int)strlen(requete) + 1, ret);
+            exit(1);
+        }
+        nbArticles --;
+    }
+    m.requete = TIME_OUT;
+    m.type = pidClient;
+    m.expediteur = getpid();
+    
+    if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0) == -1) {
+        fprintf(stderr, "(CADDIE %d) Erreur de msgsnd !",getpid());
+        exit(1);
+    }
+    kill(pidClient, SIGUSR1);
     // Envoi d'un Time Out au client (s'il existe toujours)
 
     exit(0);

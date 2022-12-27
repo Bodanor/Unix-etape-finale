@@ -714,6 +714,9 @@ void handlerSIGUSR1(int sig)
             break;
 
         case TIME_OUT: // TO DO (étape 6)
+            printf("Client %d) Requete TIME_OUT reçue de Caddie ...\n", getpid());
+            w->logoutOK();
+            w->dialogueErreur("Logout", "Cheh fallait pas réfléchir trop longtemps batard ! ");
             break;
 
         case BUSY: // TO DO (étape 7)
