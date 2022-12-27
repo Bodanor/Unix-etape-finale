@@ -220,6 +220,22 @@ int main(int argc, char *argv[])
 
             // On envoie a AccesBD autant de requeres CANCEL qu'il y a d'articles dans le panier
 
+            while(nbArticles >= 0)
+            {
+                fprintf(stderr, "(CADDIE %d) Envoie de la requete CANCEL à ACCESBD sur le pipe\n", getpid());
+                m.expediteur = getpid();
+                m.requete = CANCEL;
+                
+                m.data1 = articles[nbArticles].id;
+                sprintf(m.data2, "%d", articles[nbArticles].stock);
+                if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
+                    fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
+                    printf("%d != %d\n", (int)strlen(requete) + 1, ret);
+                    exit(1);
+                }
+                nbArticles --;
+            }
+
             // On vide le panier
             break;
 
