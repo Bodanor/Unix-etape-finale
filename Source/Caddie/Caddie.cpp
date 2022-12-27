@@ -22,7 +22,6 @@ int nbArticles = 0;
 int fdWpipe;
 int pidClient;
 
-MYSQL *connexion;
 
 void handlerSIGALRM(int sig);
 
@@ -75,7 +74,8 @@ int main(int argc, char *argv[])
 
         case LOGOUT: // TO DO
             fprintf(stderr, "(CADDIE %d) Requete LOGOUT reçue de %d\n", getpid(), m.expediteur);
-            mysql_close(connexion);
+            
+
             exit(0);
             break;
 
@@ -220,14 +220,14 @@ int main(int argc, char *argv[])
 
             // On envoie a AccesBD autant de requeres CANCEL qu'il y a d'articles dans le panier
 
-            while(nbArticles >= 0)
+            while(nbArticles > 0) // Si il y a eu LOGOUT, il ne faut pas rentrer dans la boucle quand le client à déja payer
             {
                 fprintf(stderr, "(CADDIE %d) Envoie de la requete CANCEL à ACCESBD sur le pipe\n", getpid());
                 m.expediteur = getpid();
                 m.requete = CANCEL;
                 
-                m.data1 = articles[nbArticles].id;
-                sprintf(m.data2, "%d", articles[nbArticles].stock);
+                m.data1 = articles[nbArticles-1].id; // nbArticles-1 : Indice - 1, car si 1 article alors on accède à l'indice 1-1 == 0
+                sprintf(m.data2, "%d", articles[nbArticles-1].stock);
                 if ((ret = write(fdWpipe, &m,sizeof(MESSAGE))) != sizeof(MESSAGE)) {
                     fprintf(stderr, "(CADDIE %d) Erreur de write !\n", getpid());
                     printf("%d != %d\n", (int)strlen(requete) + 1, ret);
