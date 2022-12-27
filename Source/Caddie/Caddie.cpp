@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-        alarm(5);
+        alarm(60);
         if (msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
         {
             perror("(CADDIE) Erreur de msgrcv");

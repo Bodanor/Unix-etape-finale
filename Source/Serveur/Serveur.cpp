@@ -94,7 +94,7 @@ int main()
 
     // Creation du processus Publicite (étape 2)
 
-    /*
+    
     tab->pidPublicite = fork();
     if (tab->pidPublicite == 0) {
         if (execlp("./Publicite", "Publicite", NULL) == -1) {
@@ -102,7 +102,7 @@ int main()
             exit(1);
         }
     }
-    */
+    
     
     afficheTab();
 
