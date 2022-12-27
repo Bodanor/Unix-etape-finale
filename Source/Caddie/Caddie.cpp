@@ -206,25 +206,12 @@ int main(int argc, char *argv[])
                 printf("%d != %d\n", (int)strlen(requete) + 1, ret);
                 exit(1);
             }
-            // on attend la réponse venant de AccesBD
-            if(msgrcv(idQ, &m, sizeof(MESSAGE) - sizeof(long), getpid(), 0) == -1)
-            {
-                fprintf(stderr,"Erreur de msgrcv : ");
-                exit(1);
-            }
-            fprintf(stderr, "(CADDIE %d) Requete D'ACCESSBD reçue \n", getpid());
+            
             // Suppression de l'article du panier
-            if(m.data1!=-1)
-            {
-                
-                for(i = temp_int; i<9;i++)
-                    articles[i] = articles[i+1];
-                
-                nbArticles--;
-            }
-            else {
-                fprintf(stderr, "(CADDIE %d) Erreur de BD !\n", getpid());
-            }
+            for(i = temp_int; i<9;i++)
+                articles[i] = articles[i+1];
+            
+            nbArticles--;
             
             break;
 
