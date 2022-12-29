@@ -12,6 +12,12 @@ using namespace std;
 #include <string>
 #include <cstring>
 
+union semun
+{
+    int val;
+    struct semid_ds *buf;
+    unsigned short sem;
+}arg;
 
 int idArticleSelectionne = -1;
 MYSQL *connexion;
@@ -52,17 +58,24 @@ WindowGerant::WindowGerant(QWidget *parent) : QMainWindow(parent), ui(new Ui::Wi
         exit(1);
     }
 
-    // Récupération du sémaphore
-    // TO DO
-    /* fprintf(stderr, "Recuperation de la cle de ldu sémaphore\n");
-    if(idSem = semget(idQ, 0, 0))
+    fprintf(stderr, "Recuperation de la cle de du sémaphore\n");
+    if((idSem = semget(idQ, 0, 0)) == -1)
     {
         perror("Erreur de semget : ");
         exit(1);
-    } */
+    }
 
     // Prise blocante du semaphore
     // TO DO
+    sembuf sem;
+    sem.sem_op = -1;
+    sem.sem_flg = SEM_UNDO;
+    sem.sem_num = 0;
+    if(semop(idSem, &sem, 1) == -1)
+    {
+        perror("Erreur de semop : ");
+        exit(1);
+    }
 
     // Connexion à la base de donnée
     connexion = mysql_init(NULL);

@@ -720,6 +720,8 @@ void handlerSIGUSR1(int sig)
             break;
 
         case BUSY: // TO DO (étape 7)
+            printf("Client %d) Requete BUSY reçue de Serveur ...\n", getpid());
+            w->dialogueErreur("Busy", "Application en maintenance");
             break;
 
         default:

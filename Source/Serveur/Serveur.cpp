@@ -14,9 +14,12 @@
 #include <unistd.h>
 #include <setjmp.h>
 
+int no_maintenance(void);
+
 
 #include "protocole.h" // contient la cle et la structure d'un message
 #include "FichierClient.h"
+
 
 int idQ, idShm, idSem;
 int fdPipe[2];
@@ -88,6 +91,14 @@ int main()
         exit(1);
     }
 
+    fprintf(stderr, "(SERVEUR %d) Initialisation du sémaphore\n", getpid());
+    // Initialisation du sémaphore
+    if(semctl(idSem, 0, SETVAL, 1) == -1)
+    {
+        perror("Erreur de semctl : ");
+        exit(1);
+    }
+
     // Initialisation du tableau de connexions
     tab = (TAB_CONNEXIONS *)malloc(sizeof(TAB_CONNEXIONS));
 
@@ -101,7 +112,7 @@ int main()
 
     // Creation du processus Publicite (étape 2)
 
-    
+    /*
     tab->pidPublicite = fork();
     if (tab->pidPublicite == 0) {
         if (execlp("./Publicite", "Publicite", NULL) == -1) {
@@ -109,7 +120,7 @@ int main()
             exit(1);
         }
     }
-    
+    */
     
     afficheTab();
 
@@ -146,7 +157,7 @@ int main()
         int i;
         int status = 0;
         switch (m.requete)
-        {
+        {  
         case CONNECT: // TO DO
             fprintf(stderr, "(SERVEUR %d) Requete CONNECT reçue de %d\n", getpid(), m.expediteur);
 
@@ -179,114 +190,121 @@ int main()
 			
         case LOGIN: // TO DO
 
-            fprintf(stderr, "(SERVEUR %d) Requete LOGIN reçue de %d : --%d--%s--%s--\n", getpid(), m.expediteur, m.data1, m.data2, m.data3);
+            if (no_maintenance())
+            {
+                fprintf(stderr, "(SERVEUR %d) Requete LOGIN reçue de %d : --%d--%s--%s--\n", getpid(), m.expediteur, m.data1, m.data2, m.data3);
 
-			/* Si nouveau client coché */
-            if (m.data1 == 1) {
-                if ((status = estPresent(m.data2)) >= 1) {
-                    fprintf(stderr, "(SERVEUR %d) Client \"%s\" existe déja !\n", getpid(), m.data2);
-					m.data1 = 0;
-					strcpy(m.data4, "Nom d'utilisateur déja existant. Veuillez vous connecter avec votre mot de passe !");
-				}
-                else if (status == 0 || status == -1)
-                {
-                    /* TODO : Ajouter requete vers client pour info si c'est successfull */
-                    ajouteClient(m.data2, m.data3);
-                    fprintf(stderr, "(SERVEUR %d) Nouveau client \"%s\" crée !\n", getpid(), m.data2);
-					m.data1 = 1;
-					strcpy(m.data4, "Nouveau client crée avec succès. Vous êtes coonecté !");
-                    logging_ok = 1;
-                }
-            }
-
-			/* Sinon, l'utilisateur essaye de se connecté */
-            else {
-				/* Si le nom d'utlisateur n'est pas présent */
-                if ((status = estPresent(m.data2)) <= 0){
-                    fprintf(stderr, "(SERVEUR %d) Client \"%s\" Inconnu !\n", getpid(), m.data2);
-					m.data1 = 0;
-					strcpy(m.data4, "Nom d'utilisateur inconnu ! Veuillez d'abord vous enregistrer en cochant \"Nouveau client\"");
-                }
-                else{
-					/* Si c'est le cas, on verifie le mot de passe */
-
-                    if (verifieMotDePasse(status, m.data3) == 1) {
+                /* Si nouveau client coché */
+                if (m.data1 == 1) {
+                    if ((status = estPresent(m.data2)) >= 1) {
+                        fprintf(stderr, "(SERVEUR %d) Client \"%s\" existe déja !\n", getpid(), m.data2);
+                        m.data1 = 0;
+                        strcpy(m.data4, "Nom d'utilisateur déja existant. Veuillez vous connecter avec votre mot de passe !");
+                    }
+                    else if (status == 0 || status == -1)
+                    {
+                        /* TODO : Ajouter requete vers client pour info si c'est successfull */
+                        ajouteClient(m.data2, m.data3);
+                        fprintf(stderr, "(SERVEUR %d) Nouveau client \"%s\" crée !\n", getpid(), m.data2);
+                        m.data1 = 1;
+                        strcpy(m.data4, "Nouveau client crée avec succès. Vous êtes coonecté !");
                         logging_ok = 1;
-					}
-					else {
-						fprintf(stderr, "(SERVEUR %d) Client \"%s\" à entré un mot de passe incorrect !\n", getpid(), m.data2);
-						m.data1 = 0;
-						strcpy(m.data4, "Le mot de passe entré est incorrect !");
-					}
-				}
-            }
+                    }
+                }
 
-            if (logging_ok) {
-                
-                i = 0;
-                while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
-                    i++;
-                if (tab->connexions[i].pidFenetre == m.expediteur) {
-                    strcpy(tab->connexions[i].nom, m.data2);
-                    /* Creation du caddie associer au client */
-                    fprintf(stderr, "(SERVEUR %d) Création du caddie pour le client #%d \"%s\" logé !\n", getpid(),m.expediteur, m.data2);
-                    
+                /* Sinon, l'utilisateur essaye de se connecté */
+                else {
+                    /* Si le nom d'utlisateur n'est pas présent */
+                    if ((status = estPresent(m.data2)) <= 0){
+                        fprintf(stderr, "(SERVEUR %d) Client \"%s\" Inconnu !\n", getpid(), m.data2);
+                        m.data1 = 0;
+                        strcpy(m.data4, "Nom d'utilisateur inconnu ! Veuillez d'abord vous enregistrer en cochant \"Nouveau client\"");
+                    }
+                    else{
+                        /* Si c'est le cas, on verifie le mot de passe */
 
-                    idCaddie = fork();
-                    sprintf(temp, "%d", fd[1]);
-                    if (idCaddie == 0) {
-                        if (execlp("./Caddie", "Caddie", temp, NULL) == -1) {
-                        perror("Impossible de créer le processus Caddie !\n");
-                        exit(1);
+                        if (verifieMotDePasse(status, m.data3) == 1) {
+                            logging_ok = 1;
+                        }
+                        else {
+                            fprintf(stderr, "(SERVEUR %d) Client \"%s\" à entré un mot de passe incorrect !\n", getpid(), m.data2);
+                            m.data1 = 0;
+                            strcpy(m.data4, "Le mot de passe entré est incorrect !");
                         }
                     }
-                    i = 0;
+                }
 
+                if (logging_ok) {
+                    
+                    i = 0;
                     while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
                         i++;
                     if (tab->connexions[i].pidFenetre == m.expediteur) {
-                        tab->connexions[i].pidCaddie = idCaddie;
-                        fprintf(stderr, "(SERVEUR %d) Caddie #%d ajouté au client #%d \"%s\" !\n", getpid(),idCaddie, m.expediteur, m.data2);
-                        m.type = tab->connexions[i].pidCaddie;
-                        if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0) == -1)
-                        {
-                            fprintf(stderr, "(SERVEUR %d) Erreur de msgsnd", getpid());
+                        strcpy(tab->connexions[i].nom, m.data2);
+                        /* Creation du caddie associer au client */
+                        fprintf(stderr, "(SERVEUR %d) Création du caddie pour le client #%d \"%s\" logé !\n", getpid(),m.expediteur, m.data2);
+                        
+
+                        idCaddie = fork();
+                        sprintf(temp, "%d", fd[1]);
+                        if (idCaddie == 0) {
+                            if (execlp("./Caddie", "Caddie", temp, NULL) == -1) {
+                            perror("Impossible de créer le processus Caddie !\n");
+                            exit(1);
+                            }
                         }
+                        i = 0;
+
+                        while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                            i++;
+                        if (tab->connexions[i].pidFenetre == m.expediteur) {
+                            tab->connexions[i].pidCaddie = idCaddie;
+                            fprintf(stderr, "(SERVEUR %d) Caddie #%d ajouté au client #%d \"%s\" !\n", getpid(),idCaddie, m.expediteur, m.data2);
+                            m.type = tab->connexions[i].pidCaddie;
+                            if (msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0) == -1)
+                            {
+                                fprintf(stderr, "(SERVEUR %d) Erreur de msgsnd", getpid());
+                            }
+                        }
+                        else {
+                            fprintf(stderr, "(SERVEUR %d) Impossible d'associer un caddie au client #%d \"%s\" !\n", getpid(), m.expediteur, m.data2);
+                            m.data1 = 0;
+                            strcpy(m.data4, "Une erreur interne au serveur est survenue !");
+                        }
+
+                        fprintf(stderr, "(SERVEUR %d) Client \"%s\" logé !\n", getpid(), m.data2);
+                        if (m.data1 == 1) // Si nouveau client 
+                        {
+                            sprintf(m.data4, "Bonjour %s !", m.data2);
+                        }
+                        else
+                        {
+                            sprintf(m.data4, "Re-bonjour %s !", m.data2);
+                        }
+                        m.data1 = 1;
+        
+                        
                     }
+
+                    /* Cas très rare mais on pourrait imaginer que une erreur interne ce soit passée */
                     else {
-                        fprintf(stderr, "(SERVEUR %d) Impossible d'associer un caddie au client #%d \"%s\" !\n", getpid(), m.expediteur, m.data2);
+                        fprintf(stderr, "(SERVEUR %d) Impossible d'associer l'utilisateur au tableau de connexions !\n", getpid());
                         m.data1 = 0;
                         strcpy(m.data4, "Une erreur interne au serveur est survenue !");
                     }
 
-                    fprintf(stderr, "(SERVEUR %d) Client \"%s\" logé !\n", getpid(), m.data2);
-                    if (m.data1 == 1) // Si nouveau client 
-                    {
-                        sprintf(m.data4, "Bonjour %s !", m.data2);
-                    }
-                    else
-                    {
-                        sprintf(m.data4, "Re-bonjour %s !", m.data2);
-                    }
-                    m.data1 = 1;
-    
-                    
                 }
-
-                /* Cas très rare mais on pourrait imaginer que une erreur interne ce soit passée */
-                else {
-                    fprintf(stderr, "(SERVEUR %d) Impossible d'associer l'utilisateur au tableau de connexions !\n", getpid());
-                    m.data1 = 0;
-                    strcpy(m.data4, "Une erreur interne au serveur est survenue !");
-                }
-
+                m.type = m.expediteur;
+                m.expediteur = 1;
+                m.requete = LOGIN;
+            }
+            else {
+                m.type = m.expediteur;
+                m.expediteur = 1;
+                m.requete = BUSY;
             }
 
 			/* Envois de la reponse au client pour savoir si il est connecté ou pas */
-			
-            m.type = m.expediteur;
-            m.expediteur = 1;
-            m.requete = LOGIN;
             if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
             {
                 fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
@@ -299,6 +317,8 @@ int main()
             break;
 
         case LOGOUT: // TO DO
+
+        
             fprintf(stderr, "(SERVEUR %d) Requete LOGOUT reçue de %d\n", getpid(), m.expediteur);
 
 			i = 0;
@@ -343,6 +363,8 @@ int main()
             break;
             
         case CONSULT: // TO DO
+        if (no_maintenance())
+        {
             fprintf(stderr, "(SERVEUR %d) Requete CONSULT reçue de %d\n", getpid(), m.expediteur);
             
             //reponse destinataire = PID du caddie
@@ -366,10 +388,26 @@ int main()
                 exit(1);
             }
             
+        }
+        else
+        {
+            m.type = m.expediteur;
+            m.expediteur = 1;
+            m.requete = BUSY;
 
+            if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
+            }
+            
+            kill(m.type, SIGUSR1);
+            
+        }
             break;
 
         case ACHAT: // TO DO
+        if (no_maintenance())
+        {
             fprintf(stderr, "(SERVEUR %d) Requete ACHAT reçue de %d\n", getpid(), m.expediteur);
             
             i = 0;
@@ -392,9 +430,25 @@ int main()
                 perror("Erreur de msgsnd");
                 exit(1);
             }
+        }
+        else {
+            m.type = m.expediteur;
+            m.expediteur = 1;
+            m.requete = BUSY;
+
+            if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
+            }
+            
+            kill(m.type, SIGUSR1);
+            
+        }
             break;
 
         case CADDIE: // TO DO
+        if (no_maintenance())
+        {
             fprintf(stderr, "(SERVEUR %d) Requete CADDIE reçue de %d\n", getpid(), m.expediteur);
             
             i = 0;
@@ -420,9 +474,25 @@ int main()
                 perror("Erreur de msgsnd");
                 exit(1);
             }
+        }
+        else
+        {
+            m.type = m.expediteur;
+            m.expediteur = 1;
+            m.requete = BUSY;
+
+            if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
+            }
+            
+            kill(m.type, SIGUSR1);
+        }
             break;
 
         case CANCEL: // TO DO
+        if (no_maintenance())
+        {
             fprintf(stderr, "(SERVEUR %d) Requete CANCEL reçue de %d\n", getpid(), m.expediteur);
             
             i = 0;
@@ -442,10 +512,24 @@ int main()
                 perror("Erreur de msgsnd : ");
                 exit(1);
             }
+        }
+        else {
+            m.type = m.expediteur;
+            m.expediteur = 1;
+            m.requete = BUSY;
 
+            if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
+            }
+            
+            kill(m.type, SIGUSR1);
+        }
             break;
 
         case CANCEL_ALL: // TO DO
+        if (no_maintenance())
+        {
             fprintf(stderr, "(SERVEUR %d) Requete CANCEL_ALL reçue de %d\n", getpid(), m.expediteur);
 
             i = 0;
@@ -464,28 +548,57 @@ int main()
                 perror("Erreur de msgsnd : ");
                 exit(1);
             }
+        }
+        else
+        {
+            m.type = m.expediteur;
+            m.expediteur = 1;
+            m.requete = BUSY;
+
+            if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+            {
+                fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
+            }
+            
+            kill(m.type, SIGUSR1);
+        }
 
             break;
 
         case PAYER: // TO DO
-            fprintf(stderr, "(SERVEUR %d) Requete PAYER reçue de %d\n", getpid(), m.expediteur);
-            
-            i = 0;
-            while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
-                i++;
-            
-            if (tab->connexions[i].pidFenetre == m.expediteur)
-                idCaddie = tab->connexions[i].pidCaddie;
-            
-            reponse.expediteur = m.expediteur;
-            reponse.requete = PAYER;
-            reponse.type = idCaddie;
-
-            if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+            if (no_maintenance())
             {
-                perror("Erreur de msgsnd : ");
-                exit(1);
+                fprintf(stderr, "(SERVEUR %d) Requete PAYER reçue de %d\n", getpid(), m.expediteur);
+                
+                i = 0;
+                while (i < 6 && tab->connexions[i].pidFenetre != m.expediteur)
+                    i++;
+                
+                if (tab->connexions[i].pidFenetre == m.expediteur)
+                    idCaddie = tab->connexions[i].pidCaddie;
+                
+                reponse.expediteur = m.expediteur;
+                reponse.requete = PAYER;
+                reponse.type = idCaddie;
+
+                if(msgsnd(idQ, &reponse, sizeof(MESSAGE) - sizeof(long), 0))
+                {
+                    perror("Erreur de msgsnd : ");
+                    exit(1);
+                }
             }
+            else {
+                m.type = m.expediteur;
+                m.expediteur = 1;
+                m.requete = BUSY;
+
+                if(msgsnd(idQ, &m, sizeof(MESSAGE) - sizeof(long), 0))
+                {
+                    fprintf(stderr, "(SERVEUR %d) Impossible d'envoyer la reponse au client #%ld", getpid(), m.type);
+                }
+                
+                kill(m.type, SIGUSR1);
+                }
             break;
 
         case NEW_PUB: // TO DO
@@ -531,6 +644,15 @@ void SIGINTHANDLER(int signum)
     if (shmctl(idShm, IPC_RMID, NULL) == -1) {
         fprintf(stderr, "(SERVEUR %d) Impossible de supprimer la memoire partagée !\n", getpid());
     }
+    // Suppression du sémaphore
+
+    fprintf(stderr, "(SERVEUR %d)Sémaphore supprimé !\n", getpid());
+
+    if(semctl(idSem, 0, IPC_RMID) == -1) {
+        perror("Erreur de semctl (3)\n");
+        exit(1);
+    }
+
 	fprintf(stderr, "(SERVEUR %d) Mémoire partagée supprimée !\n", getpid());
 	exit(0);
 
@@ -544,6 +666,8 @@ void SIGCHLDHANDLER (int signum)
     fprintf(stderr, "(SERVEUR %d) Reçus du signal \"SIGCHLD\". Nettoyage de la table de processus..\n", getpid());
     id = wait(&status);
     if (WIFEXITED(status))
+
+
         fprintf(stderr, "(SERVEUR %d) Le fils %d s'est terminé par un exit (%d)\n", getpid(), id, WEXITSTATUS(status));
     
     i = 0;
@@ -560,4 +684,15 @@ void SIGCHLDHANDLER (int signum)
 
     close(fdPipe[0]);
     close(fdPipe[1]);
+}
+
+int no_maintenance(void)
+{
+    // Pas sur que c'est la bonne façon de faire donc BOH
+    int sem;
+    if ((sem = semctl(idSem, 0, GETVAL)) == -1) {
+        perror("Erreur de semctl (1)");
+    }
+    
+    return sem; //car une seule opé pour un seul sémaphore
 }
